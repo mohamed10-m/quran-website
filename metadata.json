@@ -1,0 +1,5 @@
+{
+  "name": "Quran Reels Generator",
+  "description": "A web application to generate short Quranic video reels with audio and background videos.",
+  "requestFramePermissions": []
+}
