@@ -1,20 +1,19 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🎥 منصة تصميم فيديوهات القرآن الكريم
 
-# Run and deploy your AI Studio app
+تطبيق ويب احترافي لإنشاء مقاطع فيديو قرآنية قصيرة (Reels) بلمسات إبداعية، يتيح لك دمج التلاوات العطرة مع خلفيات بصرية مميزة.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/976cb2a1-9905-4a0c-9d62-255d48578335
+## ✨ المميزات
+* **واجهة مستخدم عربية:** سهلة وبسيطة تناسب الجميع.
+* **مخصص لمنصات التواصل:** فيديوهات جاهزة للنشر على TikTok و Reels.
+* **تحكم كامل:** إمكانية تعديل النصوص، الأصوات، والخلفيات.
 
-## Run Locally
+## 🛠️ تشغيل المشروع (للمطورين)
+1. **تحميل المشروع:** قم بعمل Clone للمستودع.
+2. **تثبيت المكتبات:** `npm install`
+3. **إعداد المفتاح:** ضع مفتاح الـ API الخاص بك في ملف `.env.local`.
+4. **التشغيل:** `npm run dev`
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+**تم التطوير بواسطة: [محمد جمعة]**
