@@ -1,0 +1,22 @@
+{
+  "name": "استوديو القرآن",
+  "short_name": "استوديو القرآن",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://image2url.com/r2/default/images/1772496554292-ed47ba2e-9666-4bf6-9b40-b8088d3322fd.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://image2url.com/r2/default/images/1772496554292-ed47ba2e-9666-4bf6-9b40-b8088d3322fd.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
