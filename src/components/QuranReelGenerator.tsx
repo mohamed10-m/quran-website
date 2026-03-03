@@ -272,6 +272,7 @@ export default function QuranReelGenerator() {
     setGeneratedVideoUrl(null);
 
     let audioCtx: AudioContext | null = null;
+    const primedVideoElements: HTMLVideoElement[] = [];
 
     try {
       // Setup Audio Context immediately to capture user gesture
@@ -280,6 +281,26 @@ export default function QuranReelGenerator() {
         await audioCtx.resume();
       }
       const dest = audioCtx.createMediaStreamDestination();
+
+      // Prime videos synchronously to capture user gesture on iOS
+      if (backgroundType === 'video') {
+        for (const url of selectedVideos) {
+          const v = document.createElement('video');
+          v.crossOrigin = 'anonymous';
+          v.muted = true;
+          v.playsInline = true;
+          v.src = `/api/proxy?url=${encodeURIComponent(url)}`;
+          v.load();
+          // Attempt to prime playback
+          const playPromise = v.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => v.pause()).catch(() => {});
+          } else {
+            v.pause();
+          }
+          primedVideoElements.push(v);
+        }
+      }
 
       // Fetch Ayahs text
       const surahRes = await fetch(`https://api.alquran.cloud/v1/surah/${selectedSurah}/quran-uthmani`);
@@ -305,6 +326,12 @@ export default function QuranReelGenerator() {
       let scaleMultiplier = 1;
       if (videoQuality === '720p') scaleMultiplier = 720 / 1080;
       else if (videoQuality === '1440p') scaleMultiplier = 1440 / 1080;
+
+      // Force max 720p on mobile devices to prevent crashes and lag
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile && scaleMultiplier > 720 / 1080) {
+        scaleMultiplier = 720 / 1080;
+      }
 
       canvas.width = baseWidth * scaleMultiplier;
       canvas.height = baseHeight * scaleMultiplier;
@@ -412,7 +439,7 @@ export default function QuranReelGenerator() {
       }
 
       // Setup Videos Array for 11s chunks
-      const videoElements: HTMLVideoElement[] = [];
+      const videoElements: HTMLVideoElement[] = primedVideoElements;
       let activeVideoIdx = 0;
       let prevVideoIdx = -1;
       let transitionStartTime = 0;
@@ -422,18 +449,12 @@ export default function QuranReelGenerator() {
       const TRANSITION_DURATION_MS = 1000; // 1 second transition
 
       if (backgroundType === 'video') {
-        for (const url of selectedVideos) {
-          const v = document.createElement('video');
-          v.crossOrigin = 'anonymous';
-          v.muted = true;
-          v.playsInline = true;
-          v.src = `/api/proxy?url=${encodeURIComponent(url)}`;
-          v.load();
+        for (const v of videoElements) {
+          if (v.readyState >= 3) continue;
           await new Promise((resolve) => {
             v.oncanplay = resolve;
             v.onerror = resolve;
           });
-          videoElements.push(v);
         }
 
         if (videoElements.length > 0) {
@@ -452,7 +473,8 @@ export default function QuranReelGenerator() {
         }
       }
 
-      const stream = canvas.captureStream ? canvas.captureStream(30) : (canvas as any).mozCaptureStream ? (canvas as any).mozCaptureStream(30) : null;
+      const fps = 24; // 24fps is smoother on mobile and looks cinematic
+      const stream = canvas.captureStream ? canvas.captureStream(fps) : (canvas as any).mozCaptureStream ? (canvas as any).mozCaptureStream(fps) : null;
       if (!stream) {
         throw new Error('متصفحك لا يدعم تسجيل الفيديو من Canvas');
       }
