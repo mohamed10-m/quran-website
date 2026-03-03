@@ -327,10 +327,10 @@ export default function QuranReelGenerator() {
       if (videoQuality === '720p') scaleMultiplier = 720 / 1080;
       else if (videoQuality === '1440p') scaleMultiplier = 1440 / 1080;
 
-      // Force max 720p on mobile devices to prevent crashes and lag
+      // Force max 480p on mobile devices to prevent crashes and lag
       const isMobile = window.innerWidth <= 768;
-      if (isMobile && scaleMultiplier > 720 / 1080) {
-        scaleMultiplier = 720 / 1080;
+      if (isMobile && scaleMultiplier > 480 / 1080) {
+        scaleMultiplier = 480 / 1080;
       }
 
       canvas.width = baseWidth * scaleMultiplier;
@@ -500,12 +500,15 @@ export default function QuranReelGenerator() {
         }
       }
 
-      const options = supportedType ? { mimeType: supportedType } : undefined;
+      const options: any = supportedType ? { mimeType: supportedType } : {};
+      // Lower bitrate on mobile to prevent memory crashes (1.5 Mbps vs 4 Mbps)
+      options.videoBitsPerSecond = isMobile ? 1500000 : 4000000;
+
       const mediaRecorder = new MediaRecorder(combinedStream, options);
       setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        if (e.data && e.data.size > 0) {
           chunks.push(e.data);
         }
       };
@@ -524,7 +527,7 @@ export default function QuranReelGenerator() {
         };
       });
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Flush data every 1 second to prevent RAM overflow
 
       let isRecording = true;
       const recordingStartTime = audioCtx.currentTime;
