@@ -500,9 +500,7 @@ export default function QuranReelGenerator() {
         }
       }
 
-      const options: any = supportedType ? { mimeType: supportedType } : {};
-      // Lower bitrate on mobile to prevent memory crashes (1.5 Mbps vs 4 Mbps)
-      options.videoBitsPerSecond = isMobile ? 1500000 : 4000000;
+      const options: any = supportedType ? { mimeType: supportedType } : undefined;
 
       const mediaRecorder = new MediaRecorder(combinedStream, options);
       setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
