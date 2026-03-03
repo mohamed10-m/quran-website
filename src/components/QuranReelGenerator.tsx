@@ -500,10 +500,16 @@ export default function QuranReelGenerator() {
         }
       }
 
-      const options: any = supportedType ? { mimeType: supportedType } : undefined;
-
-      const mediaRecorder = new MediaRecorder(combinedStream, options);
-      setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
+      let mediaRecorder: MediaRecorder;
+      try {
+        const options: any = supportedType ? { mimeType: supportedType } : undefined;
+        mediaRecorder = new MediaRecorder(combinedStream, options);
+        setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
+      } catch (e) {
+        console.warn("Failed to create MediaRecorder with specific options, falling back to default:", e);
+        mediaRecorder = new MediaRecorder(combinedStream);
+        setVideoExtension(mediaRecorder.mimeType?.includes('mp4') ? 'mp4' : 'webm');
+      }
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -517,7 +523,8 @@ export default function QuranReelGenerator() {
             reject(new Error("لم يتم تسجيل أي بيانات للفيديو. قد يكون هناك مشكلة في تحميل الصوت أو الفيديو."));
             return;
           }
-          const blob = new Blob(chunks, { type: supportedType || 'video/webm' });
+          const finalMimeType = mediaRecorder.mimeType || supportedType || 'video/webm';
+          const blob = new Blob(chunks, { type: finalMimeType });
           resolve(URL.createObjectURL(blob));
         };
         mediaRecorder.onerror = (e: any) => {
