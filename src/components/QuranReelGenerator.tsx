@@ -323,20 +323,27 @@ export default function QuranReelGenerator() {
         baseHeight = 1080;
       }
 
-      let scaleMultiplier = 1;
-      if (videoQuality === '720p') scaleMultiplier = 720 / 1080;
-      else if (videoQuality === '1440p') scaleMultiplier = 1440 / 1080;
+      let targetWidth = baseWidth;
+      let targetHeight = baseHeight;
 
-      // Force max 480p on mobile devices to prevent crashes and lag
       const isMobile = window.innerWidth <= 768;
-      if (isMobile && scaleMultiplier > 480 / 1080) {
-        scaleMultiplier = 480 / 1080;
+      
+      // Use exact standard resolutions for better hardware encoder compatibility
+      if (videoQuality === '720p' || isMobile) {
+        if (videoFormat === 'landscape') { targetWidth = 1280; targetHeight = 720; }
+        else if (videoFormat === 'square') { targetWidth = 720; targetHeight = 720; }
+        else { targetWidth = 720; targetHeight = 1280; }
+      } else if (videoQuality === '1440p') {
+        if (videoFormat === 'landscape') { targetWidth = 2560; targetHeight = 1440; }
+        else if (videoFormat === 'square') { targetWidth = 1440; targetHeight = 1440; }
+        else { targetWidth = 1440; targetHeight = 2560; }
       }
 
-      canvas.width = baseWidth * scaleMultiplier;
-      canvas.height = baseHeight * scaleMultiplier;
+      // Ensure canvas dimensions are multiples of 16 (strictly required by many hardware video encoders on Android)
+      canvas.width = Math.round(targetWidth / 16) * 16;
+      canvas.height = Math.round(targetHeight / 16) * 16;
       
-      const scale = scaleMultiplier;
+      const scale = canvas.width / baseWidth; // Recalculate scale based on actual width
       const ctx = canvas.getContext('2d')!;
 
       // Preload audio and calculate text chunks
@@ -473,7 +480,7 @@ export default function QuranReelGenerator() {
         }
       }
 
-      const fps = 24; // 24fps is smoother on mobile and looks cinematic
+      const fps = 30; // 30fps is standard and widely supported by hardware encoders
       const stream = canvas.captureStream ? canvas.captureStream(fps) : (canvas as any).mozCaptureStream ? (canvas as any).mozCaptureStream(fps) : null;
       if (!stream) {
         throw new Error('متصفحك لا يدعم تسجيل الفيديو من Canvas');
@@ -484,7 +491,12 @@ export default function QuranReelGenerator() {
         ...dest.stream.getAudioTracks()
       ]);
 
-      const mimeTypes = [
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const mimeTypes = isAndroid ? [
+        'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Software, very stable on Android)
+        'video/webm',                         // WebM default
+        'video/mp4'                           // MP4 fallback
+      ] : [
         'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC (Safari)
         'video/webm;codecs="vp9, opus"',      // VP9 + Opus (Chrome/Firefox)
         'video/webm;codecs="vp8, opus"',      // VP8 + Opus
@@ -507,8 +519,12 @@ export default function QuranReelGenerator() {
         setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
       } catch (e) {
         console.warn("Failed to create MediaRecorder with specific options, falling back to default:", e);
-        mediaRecorder = new MediaRecorder(combinedStream);
-        setVideoExtension(mediaRecorder.mimeType?.includes('mp4') ? 'mp4' : 'webm');
+        try {
+          mediaRecorder = new MediaRecorder(combinedStream);
+          setVideoExtension(mediaRecorder.mimeType?.includes('mp4') ? 'mp4' : 'webm');
+        } catch (fallbackError: any) {
+          throw new Error(`تعذر بدء تسجيل الفيديو. التفاصيل: ${fallbackError.message}`);
+        }
       }
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => {
@@ -532,7 +548,11 @@ export default function QuranReelGenerator() {
         };
       });
 
-      mediaRecorder.start(1000); // Flush data every 1 second to prevent RAM overflow
+      try {
+        mediaRecorder.start(1000); // Flush data every 1 second to prevent RAM overflow
+      } catch (startError: any) {
+        throw new Error(`فشل بدء التسجيل الفعلي. التفاصيل: ${startError.message}`);
+      }
 
       let isRecording = true;
       const recordingStartTime = audioCtx.currentTime;
