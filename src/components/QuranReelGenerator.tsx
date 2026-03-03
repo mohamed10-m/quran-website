@@ -74,7 +74,7 @@ export default function QuranReelGenerator() {
   const [selectedReciter, setSelectedReciter] = useState<string>(RECITERS[0].id);
   
   const [videoFormat, setVideoFormat] = useState<'portrait' | 'landscape' | 'square'>('portrait');
-  const [videoQuality, setVideoQuality] = useState<'720p' | '1080p' | '1440p'>('1080p');
+  const [videoQuality, setVideoQuality] = useState<'240p' | '360p' | '480p' | '720p' | '1080p' | '1440p'>('720p');
   const [transitionType, setTransitionType] = useState<'crossfade' | 'fade' | 'none'>('crossfade');
   const [showSurahName, setShowSurahName] = useState(true);
   const [showAyahNumber, setShowAyahNumber] = useState(true);
@@ -327,13 +327,35 @@ export default function QuranReelGenerator() {
       let targetHeight = baseHeight;
 
       const isMobile = window.innerWidth <= 768;
+      let effectiveQuality = videoQuality;
       
+      // Cap quality on mobile to 720p max to prevent crashes, unless user explicitly chose lower
+      if (isMobile && (videoQuality === '1080p' || videoQuality === '1440p')) {
+        effectiveQuality = '720p';
+      }
+
       // Use exact standard resolutions for better hardware encoder compatibility
-      if (videoQuality === '720p' || isMobile) {
+      if (effectiveQuality === '240p') {
+        if (videoFormat === 'landscape') { targetWidth = 432; targetHeight = 240; }
+        else if (videoFormat === 'square') { targetWidth = 240; targetHeight = 240; }
+        else { targetWidth = 240; targetHeight = 432; }
+      } else if (effectiveQuality === '360p') {
+        if (videoFormat === 'landscape') { targetWidth = 640; targetHeight = 368; }
+        else if (videoFormat === 'square') { targetWidth = 368; targetHeight = 368; }
+        else { targetWidth = 368; targetHeight = 640; }
+      } else if (effectiveQuality === '480p') {
+        if (videoFormat === 'landscape') { targetWidth = 848; targetHeight = 480; }
+        else if (videoFormat === 'square') { targetWidth = 480; targetHeight = 480; }
+        else { targetWidth = 480; targetHeight = 848; }
+      } else if (effectiveQuality === '720p') {
         if (videoFormat === 'landscape') { targetWidth = 1280; targetHeight = 720; }
         else if (videoFormat === 'square') { targetWidth = 720; targetHeight = 720; }
         else { targetWidth = 720; targetHeight = 1280; }
-      } else if (videoQuality === '1440p') {
+      } else if (effectiveQuality === '1080p') {
+        if (videoFormat === 'landscape') { targetWidth = 1920; targetHeight = 1080; }
+        else if (videoFormat === 'square') { targetWidth = 1080; targetHeight = 1080; }
+        else { targetWidth = 1080; targetHeight = 1920; }
+      } else if (effectiveQuality === '1440p') {
         if (videoFormat === 'landscape') { targetWidth = 2560; targetHeight = 1440; }
         else if (videoFormat === 'square') { targetWidth = 1440; targetHeight = 1440; }
         else { targetWidth = 1440; targetHeight = 2560; }
@@ -491,17 +513,13 @@ export default function QuranReelGenerator() {
         ...dest.stream.getAudioTracks()
       ]);
 
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      const mimeTypes = isAndroid ? [
+      // Prioritize MP4 across all devices, fallback to WebM
+      const mimeTypes = [
+        'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC (Safari & some Android)
+        'video/mp4',                          // MP4 default
         'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Software, very stable on Android)
-        'video/webm',                         // WebM default
-        'video/mp4'                           // MP4 fallback
-      ] : [
-        'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC (Safari)
-        'video/webm;codecs="vp9, opus"',      // VP9 + Opus (Chrome/Firefox)
-        'video/webm;codecs="vp8, opus"',      // VP8 + Opus
-        'video/webm',                         // WebM default
-        'video/mp4'                           // MP4 fallback
+        'video/webm;codecs="vp9, opus"',      // VP9 + Opus
+        'video/webm'                          // WebM default
       ];
 
       let supportedType = '';
@@ -973,6 +991,9 @@ export default function QuranReelGenerator() {
                       onChange={(e) => setVideoQuality(e.target.value as any)}
                       className="w-full rounded-xl border-neutral-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 bg-neutral-50 px-4 py-2.5 border"
                     >
+                      <option value="240p">240p (منخفضة جداً)</option>
+                      <option value="360p">360p (منخفضة)</option>
+                      <option value="480p">480p (متوسطة)</option>
                       <option value="720p">720p (HD)</option>
                       <option value="1080p">1080p (FHD)</option>
                       <option value="1440p">1440p (2K)</option>
