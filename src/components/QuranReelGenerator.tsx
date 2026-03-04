@@ -701,14 +701,14 @@ export default function QuranReelGenerator() {
       let mimeTypes: string[] = [];
       
       if (isAndroid) {
-        // Android hardware H.264 encoders are notoriously strict and often crash with canvas recording.
-        // VP8/VP9 are software-encoded and much more stable on Android.
+        // User requested MP4 on Android. With the 480p cap and 2.5Mbps bitrate,
+        // H.264 should be much more stable now.
         mimeTypes = [
-          'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Most stable on Android)
-          'video/webm;codecs="vp9, opus"',      // VP9 + Opus
-          'video/webm',                         // WebM default
           'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC
-          'video/mp4'                           // MP4 default
+          'video/mp4',                          // MP4 default
+          'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Fallback)
+          'video/webm;codecs="vp9, opus"',      // VP9 + Opus
+          'video/webm'                          // WebM default
         ];
       } else if (isIOS) {
         // iOS prefers MP4/H.264
