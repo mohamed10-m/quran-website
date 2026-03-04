@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Download, Loader2, Video, Settings, Music, Type, AlertCircle, Image as ImageIcon, Upload, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Download, Loader2, Video, Settings, Music, Type, AlertCircle, Image as ImageIcon, Upload, BookOpen, ChevronDown, ChevronUp, CheckCircle2, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -85,6 +86,7 @@ export default function QuranReelGenerator() {
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [isSearchingVideos, setIsSearchingVideos] = useState(false);
   const [videoError, setVideoError] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   
   const [backgroundType, setBackgroundType] = useState<'video' | 'black' | 'image'>('video');
   const [customImage, setCustomImage] = useState<string | null>(null);
@@ -93,13 +95,46 @@ export default function QuranReelGenerator() {
   const [isCalculatingDuration, setIsCalculatingDuration] = useState(false);
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
-  const [videoExtension, setVideoExtension] = useState<string>('webm');
+  const [videoExtension, setVideoExtension] = useState<string>('mp4');
+  const [tasbeehIndex, setTasbeehIndex] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const TASBEEH_WORDS = ['سُبْحَانَ اللَّهِ', 'الْحَمْدُ لِلَّهِ', 'لَا إِلَهَ إِلَّا اللَّهُ', 'اللَّهُ أَكْبَرُ', 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ'];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isGenerating) {
+      interval = setInterval(() => {
+        setTasbeehIndex((prev) => (prev + 1) % TASBEEH_WORDS.length);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const [previewAyahs, setPreviewAyahs] = useState<{text: string, numberInSurah: number}[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  // Text Settings States
+  const [showTextSettings, setShowTextSettings] = useState(false);
+  const [fontFamily, setFontFamily] = useState('"Amiri Quran", Amiri, Arial');
+  const [fontSize, setFontSize] = useState(60); // Default smaller size
+  const [fontColor, setFontColor] = useState('#ffffff');
+  const [fontWeight, setFontWeight] = useState('normal');
+  const [lineHeightMultiplier, setLineHeightMultiplier] = useState(2);
+  const [letterSpacing, setLetterSpacing] = useState(0);
+  const [maxLinesPerSlide, setMaxLinesPerSlide] = useState(3);
+
+  // Live Preview States
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'playing'>('idle');
+  const [currentPreviewText, setCurrentPreviewText] = useState<string>('');
+  const [currentPreviewAyahNumber, setCurrentPreviewAyahNumber] = useState<number>(0);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const isPreviewCancelled = useRef<boolean>(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
@@ -253,23 +288,162 @@ export default function QuranReelGenerator() {
     });
   };
 
+  const stopPreview = () => {
+    isPreviewCancelled.current = true;
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current = null;
+    }
+    setPreviewState('idle');
+    setCurrentPreviewText('');
+  };
+
+  const calculateTextChunks = (text: string, baseWidth: number, scale: number) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+    ctx.letterSpacing = `${letterSpacing * scale}px`;
+
+    const words = text.split(' ');
+    let line = '';
+    const lines: string[] = [];
+    const maxWidth = baseWidth * scale - (160 * scale);
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        lines.push(line.trim());
+        line = words[n] + ' ';
+      } else {
+        line = testLine;
+      }
+    }
+    lines.push(line.trim());
+
+    const chunks = [];
+    for (let j = 0; j < lines.length; j += maxLinesPerSlide) {
+      chunks.push(lines.slice(j, j + maxLinesPerSlide));
+    }
+    return chunks;
+  };
+
+  const playLivePreview = async () => {
+    if (previewState === 'playing') {
+      stopPreview();
+      return;
+    }
+    
+    setPreviewState('loading');
+    isPreviewCancelled.current = false;
+    
+    try {
+      const surahRes = await fetch(`https://api.alquran.cloud/v1/surah/${selectedSurah}/quran-uthmani`);
+      const surahData = await surahRes.json();
+      const ayahs = surahData.data.ayahs.filter((a: any) => a.numberInSurah >= startAyah && a.numberInSurah <= endAyah);
+      
+      if (ayahs.length === 0) throw new Error('لا توجد آيات');
+
+      const audioData = ayahs.map((ayah: any) => {
+        const surahStr = selectedSurah.toString().padStart(3, '0');
+        const ayahStr = ayah.numberInSurah.toString().padStart(3, '0');
+        return {
+          ...ayah,
+          audioUrl: `/api/proxy?url=${encodeURIComponent(`https://everyayah.com/data/${selectedReciter}/${surahStr}${ayahStr}.mp3`)}`
+        };
+      });
+
+      if (isPreviewCancelled.current) return;
+      setPreviewState('playing');
+      
+      const baseWidth = videoFormat === 'landscape' ? 1920 : 1080;
+
+      for (let i = 0; i < audioData.length; i++) {
+        if (isPreviewCancelled.current) break;
+        
+        const item = audioData[i];
+        const chunks = calculateTextChunks(item.text, baseWidth, 1);
+        
+        const audio = new Audio(item.audioUrl);
+        activeAudioRef.current = audio;
+        
+        await new Promise<void>((resolve) => {
+          audio.onloadedmetadata = () => resolve();
+          audio.onerror = () => resolve();
+        });
+
+        const totalChars = item.text.replace(/\s+/g, '').length;
+        const endPaddingTime = Math.min(Math.max(audio.duration * 0.15, 1.5), 4.0);
+        const activeDuration = Math.max(audio.duration - endPaddingTime, audio.duration * 0.5);
+
+        const chunkTimes: {start: number, end: number, text: string}[] = [];
+        let currentChunkStart = 0;
+
+        for (let c = 0; c < chunks.length; c++) {
+          const chunkLines = chunks[c];
+          const chunkChars = chunkLines.join('').replace(/\s+/g, '').length;
+          const isLastChunk = (c === chunks.length - 1);
+          
+          let chunkDuration = totalChars > 0 ? (chunkChars / totalChars) * activeDuration : activeDuration;
+          if (isLastChunk) {
+            chunkDuration += (audio.duration - activeDuration);
+          }
+          
+          chunkTimes.push({
+            start: currentChunkStart,
+            end: currentChunkStart + chunkDuration,
+            text: chunkLines.join('\n')
+          });
+          currentChunkStart += chunkDuration;
+        }
+
+        await new Promise<void>((resolve) => {
+          audio.ontimeupdate = () => {
+            const currentTime = audio.currentTime;
+            const currentChunk = chunkTimes.find(ct => currentTime >= ct.start && currentTime < ct.end) || chunkTimes[chunkTimes.length - 1];
+            if (currentChunk) {
+              setCurrentPreviewText(currentChunk.text);
+              setCurrentPreviewAyahNumber(item.numberInSurah);
+            }
+          };
+          audio.onended = () => resolve();
+          audio.onerror = () => resolve();
+          audio.play().catch(() => resolve());
+        });
+      }
+      
+      if (!isPreviewCancelled.current) {
+        setPreviewState('idle');
+        setCurrentPreviewText('');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('حدث خطأ أثناء تشغيل المعاينة');
+      setPreviewState('idle');
+    }
+  };
+
   const generateReel = async () => {
+    setError(null);
     if (backgroundType === 'video' && selectedVideos.length === 0) {
-      alert('الرجاء اختيار فيديو خلفية واحد على الأقل');
+      setError('الرجاء اختيار فيديو خلفية واحد على الأقل');
       return;
     }
     if (backgroundType === 'image' && !customImage) {
-      alert('الرجاء رفع صورة للخلفية');
+      setError('الرجاء رفع صورة للخلفية');
       return;
     }
     if (startAyah > endAyah) {
-      alert('آية البداية يجب أن تكون أقل من أو تساوي آية النهاية');
+      setError('آية البداية يجب أن تكون أقل من أو تساوي آية النهاية');
       return;
     }
 
     setIsGenerating(true);
+    setShowExportDialog(true);
     setProgress(0);
+    setGenerationStatus('جاري تحضير بيئة العمل...');
     setGeneratedVideoUrl(null);
+    abortControllerRef.current = new AbortController();
 
     let audioCtx: AudioContext | null = null;
     const primedVideoElements: HTMLVideoElement[] = [];
@@ -370,11 +544,13 @@ export default function QuranReelGenerator() {
 
       // Preload audio and calculate text chunks
       try {
-        await document.fonts.load(`${80 * scale}px "Amiri Quran"`);
+        await document.fonts.load(`${fontWeight} ${fontSize * scale}px "${fontFamily.split(',')[0].replace(/"/g, '')}"`);
       } catch (e) {
-        console.warn('Failed to load Amiri Quran font, falling back to default.');
+        console.warn('Failed to load font, falling back to default.');
       }
-      ctx.font = `normal ${80 * scale}px "Amiri Quran", Amiri, Arial`;
+      ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+      ctx.letterSpacing = `${letterSpacing * scale}px`;
+      
       const processedAyahs: any[] = [];
       let cumulativeTime = 0;
       
@@ -408,7 +584,7 @@ export default function QuranReelGenerator() {
         }
         lines.push(line.trim());
 
-        // Group into chunks of max 3 lines
+        // Group into chunks
         const chunksForAyah = [];
         const chunkTimes = [];
         const totalChars = text.replace(/\s+/g, '').length;
@@ -420,12 +596,12 @@ export default function QuranReelGenerator() {
         // Ensure active duration is at least 50% of the total duration
         const activeDuration = Math.max(audioBuffer.duration - endPaddingTime, audioBuffer.duration * 0.5);
 
-        for (let j = 0; j < lines.length; j += 3) {
-          const chunkLines = lines.slice(j, j + 3);
+        for (let j = 0; j < lines.length; j += maxLinesPerSlide) {
+          const chunkLines = lines.slice(j, j + maxLinesPerSlide);
           chunksForAyah.push(chunkLines);
           
           const chunkChars = chunkLines.join('').replace(/\s+/g, '').length;
-          const isLastChunk = (j + 3 >= lines.length);
+          const isLastChunk = (j + maxLinesPerSlide >= lines.length);
           
           // Avoid division by zero if text is empty
           let chunkDuration = totalChars > 0 ? (chunkChars / totalChars) * activeDuration : activeDuration;
@@ -454,8 +630,10 @@ export default function QuranReelGenerator() {
         cumulativeTime += audioBuffer.duration;
       }
       const totalDuration = cumulativeTime;
-
-      // Setup Background
+      
+      if (abortControllerRef.current?.signal.aborted) throw new Error('تم إلغاء التصدير');
+      setGenerationStatus('جاري تحضير الخلفية...');
+      setProgress(35);
       let loadedCustomImage: HTMLImageElement | null = null;
       if (backgroundType === 'image' && customImage) {
         loadedCustomImage = new Image();
@@ -503,6 +681,9 @@ export default function QuranReelGenerator() {
       }
 
       const fps = 30; // 30fps is standard and widely supported by hardware encoders
+      const fpsInterval = 1000 / fps;
+      let lastDrawTime = performance.now();
+
       const stream = canvas.captureStream ? canvas.captureStream(fps) : (canvas as any).mozCaptureStream ? (canvas as any).mozCaptureStream(fps) : null;
       if (!stream) {
         throw new Error('متصفحك لا يدعم تسجيل الفيديو من Canvas');
@@ -517,6 +698,7 @@ export default function QuranReelGenerator() {
       const mimeTypes = [
         'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC (Safari & some Android)
         'video/mp4',                          // MP4 default
+        'video/webm;codecs="h264, opus"',     // H.264 in WebM container
         'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Software, very stable on Android)
         'video/webm;codecs="vp9, opus"',      // VP9 + Opus
         'video/webm'                          // WebM default
@@ -532,9 +714,11 @@ export default function QuranReelGenerator() {
 
       let mediaRecorder: MediaRecorder;
       try {
-        const options: any = supportedType ? { mimeType: supportedType } : undefined;
+        const options: any = supportedType ? { mimeType: supportedType, videoBitsPerSecond: 5000000 } : { videoBitsPerSecond: 5000000 };
         mediaRecorder = new MediaRecorder(combinedStream, options);
-        setVideoExtension(supportedType?.includes('mp4') ? 'mp4' : 'webm');
+        // Force mp4 extension if we are using h264 or mp4, otherwise webm
+        const isMp4 = supportedType?.includes('mp4') || supportedType?.includes('h264');
+        setVideoExtension(isMp4 ? 'mp4' : 'webm');
       } catch (e) {
         console.warn("Failed to create MediaRecorder with specific options, falling back to default:", e);
         try {
@@ -557,7 +741,8 @@ export default function QuranReelGenerator() {
             reject(new Error("لم يتم تسجيل أي بيانات للفيديو. قد يكون هناك مشكلة في تحميل الصوت أو الفيديو."));
             return;
           }
-          const finalMimeType = mediaRecorder.mimeType || supportedType || 'video/webm';
+          // Force the blob type to video/mp4 if we determined it's mp4 compatible
+          const finalMimeType = (supportedType?.includes('mp4') || supportedType?.includes('h264')) ? 'video/mp4' : (mediaRecorder.mimeType || supportedType || 'video/webm');
           const blob = new Blob(chunks, { type: finalMimeType });
           resolve(URL.createObjectURL(blob));
         };
@@ -567,7 +752,7 @@ export default function QuranReelGenerator() {
       });
 
       try {
-        mediaRecorder.start(1000); // Flush data every 1 second to prevent RAM overflow
+        mediaRecorder.start(); // Record continuously without timeslice to prevent duration issues
       } catch (startError: any) {
         throw new Error(`فشل بدء التسجيل الفعلي. التفاصيل: ${startError.message}`);
       }
@@ -583,16 +768,39 @@ export default function QuranReelGenerator() {
         source.start(recordingStartTime + ayah.startTime);
       });
 
+      setGenerationStatus('جاري رسم وتصدير الإطارات...');
+
+      let renderInterval: NodeJS.Timeout;
+
       const drawFrame = () => {
-        if (!isRecording) return;
-        requestAnimationFrame(drawFrame);
+        if (!isRecording) {
+          clearInterval(renderInterval);
+          return;
+        }
+        
+        if (abortControllerRef.current?.signal.aborted) {
+          isRecording = false;
+          clearInterval(renderInterval);
+          if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+          return;
+        }
 
         const now = performance.now();
+        const elapsed = now - lastDrawTime;
+        if (elapsed < fpsInterval) return;
+        lastDrawTime = now - (elapsed % fpsInterval);
         const currentAudioTime = audioCtx!.currentTime - recordingStartTime;
+        
+        // Update progress (40% to 95%)
+        const renderProgress = Math.min(95, 40 + Math.round((currentAudioTime / totalDuration) * 55));
+        setProgress(renderProgress);
 
-        if (currentAudioTime >= totalDuration) {
+        // Add a small buffer (0.5s) to totalDuration to ensure the last frame is captured
+        if (currentAudioTime >= totalDuration + 0.5) {
           if (isRecording) {
             isRecording = false;
+            setGenerationStatus('جاري معالجة الملف النهائي...');
+            setProgress(98);
             if (mediaRecorder.state !== 'inactive') {
               try { mediaRecorder.requestData(); } catch (e) {}
               mediaRecorder.stop();
@@ -714,8 +922,9 @@ export default function QuranReelGenerator() {
 
         // Draw text
         if (currentAyah) {
-          ctx.fillStyle = 'white';
-          ctx.font = `normal ${80 * scale}px "Amiri Quran", Amiri, Arial`;
+          ctx.fillStyle = fontColor;
+          ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+          ctx.letterSpacing = `${letterSpacing * scale}px`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.direction = 'rtl';
@@ -727,7 +936,7 @@ export default function QuranReelGenerator() {
           
           const lines = currentAyah.chunks[chunkIdx] || [];
 
-          const lineHeight = 160 * scale;
+          const lineHeight = (fontSize * lineHeightMultiplier) * scale;
           const totalHeight = lines.length * lineHeight;
           let startYText = (canvas.height - totalHeight) / 2;
 
@@ -738,7 +947,7 @@ export default function QuranReelGenerator() {
           }
 
           // Draw main text
-          ctx.fillStyle = 'white';
+          ctx.fillStyle = fontColor;
           for (let i = 0; i < lines.length; i++) {
             ctx.fillText(lines[i], canvas.width / 2, startYText + (i * lineHeight));
           }
@@ -765,13 +974,14 @@ export default function QuranReelGenerator() {
         setProgress((currentAudioTime / totalDuration) * 100);
       };
 
-      drawFrame();
+      renderInterval = setInterval(drawFrame, fpsInterval / 2); // Run slightly faster than fps to catch frames
       const url = await recordingPromise;
       setGeneratedVideoUrl(url);
 
     } catch (err: any) {
       console.error(err);
-      alert(`حدث خطأ أثناء إنشاء الفيديو: ${err.message}`);
+      setError(`حدث خطأ أثناء إنشاء الفيديو: ${err.message}`);
+      setShowExportDialog(false);
     } finally {
       setIsGenerating(false);
       if (audioCtx && audioCtx.state !== 'closed') {
@@ -805,7 +1015,7 @@ export default function QuranReelGenerator() {
         </a>
       </div>
 
-      <header className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+      <header className="bg-white border-b border-neutral-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
@@ -1044,6 +1254,135 @@ export default function QuranReelGenerator() {
               </div>
             </div>
 
+            {/* Text Settings */}
+            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden transition-all duration-300">
+              <div 
+                onClick={() => setShowTextSettings(!showTextSettings)}
+                className="w-full flex items-center justify-between p-6 bg-white hover:bg-neutral-50 transition-colors cursor-pointer"
+              >
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Type className="w-5 h-5 text-emerald-600" />
+                  إعدادات النص والخط
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFontFamily('"Amiri Quran", Amiri, Arial');
+                      setFontSize(60);
+                      setFontColor('#ffffff');
+                      setFontWeight('normal');
+                      setLineHeightMultiplier(2);
+                      setLetterSpacing(0);
+                      setMaxLinesPerSlide(3);
+                    }}
+                    className="p-2 rounded-full bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-emerald-600 transition-colors"
+                    title="استعادة الإعدادات الافتراضية"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                  <div className={cn("p-2 rounded-full bg-emerald-50 text-emerald-600 transition-transform duration-300", showTextSettings ? "rotate-180" : "")}>
+                    <ChevronDown className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className={cn(
+                "grid transition-all duration-300 ease-in-out",
+                showTextSettings ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              )}>
+                <div className="overflow-hidden">
+                  <div className="p-6 pt-0 space-y-5 border-t border-neutral-100 mt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">نوع الخط</label>
+                      <select 
+                        value={fontFamily}
+                        onChange={(e) => setFontFamily(e.target.value)}
+                        className="w-full rounded-xl border-neutral-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 bg-neutral-50 px-4 py-2.5 border"
+                      >
+                        <option value='"Amiri Quran", Amiri, Arial'>أميري قرآن (Amiri Quran)</option>
+                        <option value='"Noto Naskh Arabic", Arial, sans-serif'>النسخ التقليدي (Naskh)</option>
+                        <option value='"KFGQPC Uthman Taha Naskh", "Lateef", Arial, sans-serif'>عثمان طه (Hafs)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">سمك الخط</label>
+                      <select 
+                        value={fontWeight}
+                        onChange={(e) => setFontWeight(e.target.value)}
+                        className="w-full rounded-xl border-neutral-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 bg-neutral-50 px-4 py-2.5 border"
+                      >
+                        <option value="normal">عادي (Normal)</option>
+                        <option value="bold">عريض (Bold)</option>
+                        <option value="300">خفيف (Light)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">حجم الخط: {fontSize}</label>
+                      <input 
+                        type="range" 
+                        min="30" max="150" 
+                        value={fontSize} 
+                        onChange={(e) => setFontSize(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">لون الخط</label>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="color" 
+                          value={fontColor} 
+                          onChange={(e) => setFontColor(e.target.value)}
+                          className="w-10 h-10 rounded cursor-pointer border-0 p-0"
+                        />
+                        <span className="text-sm text-neutral-500" dir="ltr">{fontColor}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">ارتفاع السطر: {lineHeightMultiplier}</label>
+                      <input 
+                        type="range" 
+                        min="1" max="3" step="0.1"
+                        value={lineHeightMultiplier} 
+                        onChange={(e) => setLineHeightMultiplier(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">المسافة بين الحروف: {letterSpacing}px</label>
+                      <input 
+                        type="range" 
+                        min="-5" max="20" step="1"
+                        value={letterSpacing} 
+                        onChange={(e) => setLetterSpacing(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">أقصى عدد سطور للشريحة: {maxLinesPerSlide}</label>
+                    <input 
+                      type="range" 
+                      min="1" max="6" step="1"
+                      value={maxLinesPerSlide} 
+                      onChange={(e) => setMaxLinesPerSlide(Number(e.target.value))}
+                      className="w-full accent-emerald-600"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+
             {/* Background Settings */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-neutral-200">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -1146,75 +1485,231 @@ export default function QuranReelGenerator() {
               )}
             </div>
 
-            {/* Generate Button */}
-            <button
-              onClick={generateReel}
-              disabled={isGenerating || (backgroundType === 'video' && selectedVideos.length === 0) || (backgroundType === 'image' && !customImage)}
-              className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  جاري المعالجة... {Math.round(progress)}%
-                </>
-              ) : (
-                <>
-                  <Settings className="w-6 h-6" />
-                  إنشاء الريلز
-                </>
-              )}
-            </button>
-            
-            {isGenerating && (
-              <div className="mt-4">
-                <div className="w-full bg-neutral-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
-                </div>
-                <p className="text-sm text-amber-600 mt-3 font-medium flex items-center gap-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  يرجى إبقاء هذه الصفحة مفتوحة وعدم التبديل إلى علامة تبويب أخرى أثناء إنشاء الفيديو لضمان جودة التسجيل.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Preview Column */}
-          <div className="lg:col-span-7 flex flex-col items-center justify-center bg-neutral-100 rounded-3xl p-8 border border-neutral-200 min-h-[600px]">
-            {generatedVideoUrl ? (
-              <div className="w-full max-w-[360px] flex flex-col items-center gap-6">
-                <div className="relative w-full aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-xl ring-1 ring-black/5">
+          <div className="lg:col-span-7 flex flex-col items-center justify-start bg-neutral-100 rounded-3xl p-4 sm:p-8 border border-neutral-200 min-h-[600px]">
+            <div className="w-full max-w-[360px] flex flex-col items-center gap-4 sticky top-24">
+              
+              <div className="w-full flex justify-between items-center mb-2">
+                <h3 className="font-bold text-neutral-800 text-lg">المعاينة الحية</h3>
+                <button 
+                  onClick={playLivePreview} 
+                  disabled={previewState === 'loading'}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2",
+                    previewState === 'playing' 
+                      ? "bg-red-100 text-red-700 hover:bg-red-200" 
+                      : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                  )}
+                >
+                  {previewState === 'loading' ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> جاري التحضير...</>
+                  ) : previewState === 'playing' ? (
+                    <><Video className="w-4 h-4" /> إيقاف المعاينة</>
+                  ) : (
+                    <><Play className="w-4 h-4" /> تشغيل بالصوت</>
+                  )}
+                </button>
+              </div>
+
+              {/* Live Preview Box */}
+              <div 
+                className="relative w-full bg-black rounded-2xl overflow-hidden shadow-xl ring-1 ring-black/5 flex flex-col"
+                style={{ aspectRatio: videoFormat === 'portrait' ? '9/16' : videoFormat === 'landscape' ? '16/9' : '1/1' }}
+              >
+                {/* Background Layer */}
+                {backgroundType === 'video' && selectedVideos.length > 0 && (
                   <video 
-                    src={generatedVideoUrl} 
-                    controls 
+                    src={`/api/proxy?url=${encodeURIComponent(selectedVideos[0])}`} 
                     autoPlay 
                     loop 
-                    className="w-full h-full object-cover"
+                    muted 
+                    playsInline 
+                    className="absolute inset-0 w-full h-full object-cover" 
                   />
+                )}
+                {backgroundType === 'image' && customImage && (
+                  <img src={customImage} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+                )}
+                
+                {/* Overlay Layer */}
+                <div className="absolute inset-0 bg-black/50" />
+
+                {/* Text Layer */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center z-10">
+                  <p 
+                    className="leading-loose whitespace-pre-wrap" 
+                    style={{ 
+                      fontFamily: fontFamily,
+                      fontWeight: fontWeight,
+                      color: fontColor,
+                      fontSize: `${(fontSize / 1080) * 100}cqi`, 
+                      lineHeight: lineHeightMultiplier,
+                      letterSpacing: `${letterSpacing}px`,
+                      textShadow: '0 2px 10px rgba(0,0,0,0.8)' 
+                    }}
+                  >
+                    {currentPreviewText || (previewAyahs.length > 0 ? calculateTextChunks(previewAyahs[0].text, videoFormat === 'landscape' ? 1920 : 1080, 1)[0]?.join('\n') : 'جاري تحميل الآيات...')}
+                  </p>
                 </div>
-                <a 
-                  href={generatedVideoUrl} 
-                  download={`quran-reel-${selectedSurah}-${startAyah}-${endAyah}.${videoExtension}`}
-                  className="w-full py-3 bg-neutral-900 text-white rounded-xl font-medium hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+
+                {/* Info Layer */}
+                <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-2 text-white/90 text-[10px] sm:text-xs font-medium z-10 drop-shadow-md">
+                  {showSurahName && <span>{surahs.find(s => s.number === selectedSurah)?.name}</span>}
+                  {showSurahName && (showAyahNumber || showReciterName) && <span>|</span>}
+                  {showAyahNumber && <span>آية {currentPreviewAyahNumber || startAyah}</span>}
+                  {showAyahNumber && showReciterName && <span>|</span>}
+                  {showReciterName && <span>{RECITERS.find(r => r.id === selectedReciter)?.name}</span>}
+                </div>
+                
+                {/* Container Query Wrapper for Font Scaling */}
+                <style>{`
+                  .relative.w-full.bg-black {
+                    container-type: inline-size;
+                  }
+                `}</style>
+              </div>
+
+              {/* Generate Button */}
+              <div className="w-full mt-6">
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">{error}</p>
+                  </div>
+                )}
+                <button
+                  onClick={generateReel}
+                  disabled={isGenerating || (backgroundType === 'video' && selectedVideos.length === 0) || (backgroundType === 'image' && !customImage)}
+                  className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
                 >
-                  <Download className="w-5 h-5" />
-                  تحميل الفيديو
-                </a>
+                  <Download className="w-6 h-6" />
+                  تصدير الفيديو النهائي
+                </button>
               </div>
-            ) : (
-              <div className="text-center max-w-sm">
-                <div className="w-20 h-20 bg-neutral-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Video className="w-10 h-10 text-neutral-400" />
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900 mb-2">معاينة الفيديو</h3>
-                <p className="text-neutral-500">
-                  قم باختيار القارئ، السورة، الآيات، وفيديو الخلفية ثم اضغط على "إنشاء الريلز" لرؤية النتيجة هنا.
-                </p>
-              </div>
-            )}
+
+            </div>
           </div>
           
         </div>
       </main>
+      {/* Export Dialog Overlay */}
+      <AnimatePresence>
+        {showExportDialog && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col items-center p-8 relative"
+            >
+              {/* Rotating Tasbeeh */}
+              <div className="absolute top-0 left-0 right-0 overflow-hidden h-14 bg-emerald-50 border-b border-emerald-100 flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={tasbeehIndex}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-emerald-800 font-bold text-lg font-quran"
+                  >
+                    {TASBEEH_WORDS[tasbeehIndex]}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              <div className="mt-14 flex flex-col items-center w-full">
+                {generatedVideoUrl && !isGenerating ? (
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex flex-col items-center w-full"
+                  >
+                    <div className="w-28 h-28 mb-6 flex items-center justify-center bg-emerald-100 rounded-full">
+                      <CheckCircle2 className="w-14 h-14 text-emerald-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-neutral-900 mb-2">تم إنشاء الفيديو بنجاح!</h3>
+                    <p className="text-sm text-neutral-500 text-center mb-8">
+                      الفيديو جاهز للتحميل والمشاركة
+                    </p>
+                    
+                    <a 
+                      href={generatedVideoUrl} 
+                      download={`quran-reel-${selectedSurah}-${startAyah}-${endAyah}.${videoExtension}`}
+                      onClick={() => setShowExportDialog(false)}
+                      className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 mb-3"
+                    >
+                      <Download className="w-6 h-6" />
+                      تحميل الفيديو ({videoExtension.toUpperCase()})
+                    </a>
+                    
+                    <button 
+                      onClick={() => setShowExportDialog(false)}
+                      className="w-full py-3 px-4 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 rounded-xl font-medium transition-colors"
+                    >
+                      إغلاق
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center w-full"
+                  >
+                    {/* Circular Progress */}
+                    <div className="relative w-32 h-32 mb-6">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle 
+                          cx="50" cy="50" r="45" 
+                          fill="none" 
+                          stroke="#ecfdf5" 
+                          strokeWidth="8"
+                        />
+                        <circle 
+                          cx="50" cy="50" r="45" 
+                          fill="none" 
+                          stroke="#059669" 
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 45}`}
+                          strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
+                          className="transition-all duration-300 ease-out"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center flex-col">
+                        <span className="text-2xl font-bold text-emerald-700">{Math.round(progress)}%</span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-neutral-900 mb-2">جاري إنشاء الفيديو</h3>
+                    <p className="text-sm text-neutral-500 text-center mb-8 h-10 flex items-center justify-center">
+                      {generationStatus}
+                    </p>
+
+                    <button 
+                      onClick={() => {
+                        abortControllerRef.current?.abort();
+                        setIsGenerating(false);
+                        setShowExportDialog(false);
+                      }}
+                      className="w-full py-3 px-4 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium transition-colors"
+                    >
+                      إلغاء التصدير
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
