@@ -500,12 +500,12 @@ export default function QuranReelGenerator() {
       let targetWidth = baseWidth;
       let targetHeight = baseHeight;
 
-      const isMobile = window.innerWidth <= 768;
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
       let effectiveQuality = videoQuality;
       
-      // Cap quality on mobile to 720p max to prevent crashes, unless user explicitly chose lower
-      if (isMobile && (videoQuality === '1080p' || videoQuality === '1440p')) {
-        effectiveQuality = '720p';
+      // Cap quality on mobile to 480p max to prevent hardware encoder crashes and memory issues
+      if (isMobileDevice && (videoQuality === '720p' || videoQuality === '1080p' || videoQuality === '1440p')) {
+        effectiveQuality = '480p';
       }
 
       // Use exact standard resolutions for better hardware encoder compatibility
@@ -694,15 +694,39 @@ export default function QuranReelGenerator() {
         ...dest.stream.getAudioTracks()
       ]);
 
-      // Prioritize MP4 across all devices, fallback to WebM
-      const mimeTypes = [
-        'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC (Safari & some Android)
-        'video/mp4',                          // MP4 default
-        'video/webm;codecs="h264, opus"',     // H.264 in WebM container
-        'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Software, very stable on Android)
-        'video/webm;codecs="vp9, opus"',      // VP9 + Opus
-        'video/webm'                          // WebM default
-      ];
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      // Prioritize codecs based on the platform for maximum stability
+      let mimeTypes: string[] = [];
+      
+      if (isAndroid) {
+        // Android hardware H.264 encoders are notoriously strict and often crash with canvas recording.
+        // VP8/VP9 are software-encoded and much more stable on Android.
+        mimeTypes = [
+          'video/webm;codecs="vp8, opus"',      // VP8 + Opus (Most stable on Android)
+          'video/webm;codecs="vp9, opus"',      // VP9 + Opus
+          'video/webm',                         // WebM default
+          'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC
+          'video/mp4'                           // MP4 default
+        ];
+      } else if (isIOS) {
+        // iOS prefers MP4/H.264
+        mimeTypes = [
+          'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC
+          'video/mp4'                           // MP4 default
+        ];
+      } else {
+        // Desktop: Prioritize MP4, fallback to WebM
+        mimeTypes = [
+          'video/mp4;codecs="avc1, mp4a.40.2"', // H.264 + AAC
+          'video/mp4',                          // MP4 default
+          'video/webm;codecs="h264, opus"',     // H.264 in WebM container
+          'video/webm;codecs="vp8, opus"',      // VP8 + Opus
+          'video/webm;codecs="vp9, opus"',      // VP9 + Opus
+          'video/webm'                          // WebM default
+        ];
+      }
 
       let supportedType = '';
       for (const type of mimeTypes) {
@@ -714,7 +738,9 @@ export default function QuranReelGenerator() {
 
       let mediaRecorder: MediaRecorder;
       try {
-        const options: any = supportedType ? { mimeType: supportedType, videoBitsPerSecond: 5000000 } : { videoBitsPerSecond: 5000000 };
+        // Use a lower bitrate for mobile to prevent encoder crashes (2.5 Mbps vs 5 Mbps)
+        const videoBitsPerSecond = isMobileDevice ? 2500000 : 5000000;
+        const options: any = supportedType ? { mimeType: supportedType, videoBitsPerSecond } : { videoBitsPerSecond };
         mediaRecorder = new MediaRecorder(combinedStream, options);
         // Force mp4 extension if we are using h264 or mp4, otherwise webm
         const isMp4 = supportedType?.includes('mp4') || supportedType?.includes('h264');
@@ -722,10 +748,19 @@ export default function QuranReelGenerator() {
       } catch (e) {
         console.warn("Failed to create MediaRecorder with specific options, falling back to default:", e);
         try {
-          mediaRecorder = new MediaRecorder(combinedStream);
-          setVideoExtension(mediaRecorder.mimeType?.includes('mp4') ? 'mp4' : 'webm');
+          // If it fails, try without specifying videoBitsPerSecond (let the browser decide)
+          const fallbackOptions: any = supportedType ? { mimeType: supportedType } : {};
+          mediaRecorder = new MediaRecorder(combinedStream, fallbackOptions);
+          const isMp4 = supportedType?.includes('mp4') || supportedType?.includes('h264');
+          setVideoExtension(isMp4 ? 'mp4' : 'webm');
         } catch (fallbackError: any) {
-          throw new Error(`تعذر بدء تسجيل الفيديو. التفاصيل: ${fallbackError.message}`);
+          try {
+            // Absolute last resort: no options at all
+            mediaRecorder = new MediaRecorder(combinedStream);
+            setVideoExtension(mediaRecorder.mimeType?.includes('mp4') ? 'mp4' : 'webm');
+          } catch (finalError: any) {
+            throw new Error(`تعذر بدء تسجيل الفيديو. التفاصيل: ${finalError.message}`);
+          }
         }
       }
       const chunks: BlobPart[] = [];
