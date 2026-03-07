@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Download, Loader2, Video, Settings, Music, Type, AlertCircle, Image as ImageIcon, Upload, BookOpen, ChevronDown, ChevronUp, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Play, Download, Loader2, Video, Settings, Music, Type, AlertCircle, Image as ImageIcon, Upload, BookOpen, ChevronDown, ChevronUp, CheckCircle2, RotateCcw, Volume2, Square, Heart, SkipBack, SkipForward, Repeat } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -42,30 +42,53 @@ const RECITERS = [
   { id: 'Abdul_Basit_Murattal_192kbps', name: 'عبد الباسط عبد الصمد (مرتل)' },
   { id: 'Abdul_Basit_Mujawwad_128kbps', name: 'عبد الباسط عبد الصمد (مجود)' },
   { id: 'Abdullah_Basfar_192kbps', name: 'عبد الله بصفر' },
+  { id: 'Abdullah_Matroud_128kbps', name: 'عبد الله مطرود' },
   { id: 'Abdurrahmaan_As-Sudais_192kbps', name: 'عبد الرحمن السديس' },
   { id: 'Abu_Bakr_Ash-Shaatree_128kbps', name: 'أبو بكر الشاطري' },
-  { id: 'Ahmed_ibn_Ali_al-Ajamy_128kbps', name: 'أحمد بن علي العجمي' },
+  { id: 'ahmed_ibn_ali_al_ajamy_128kbps', name: 'أحمد بن علي العجمي' },
   { id: 'Alafasy_128kbps', name: 'مشاري راشد العفاسي' },
+  { id: 'Ali_Hajjaj_AlSuesy_128kbps', name: 'علي حجاج السويسي' },
+  { id: 'Ali_Jaber_64kbps', name: 'علي جابر' },
+  { id: 'Ayman_Sowaid_64kbps', name: 'أيمن سويد' },
+  { id: 'Fares_Abbad_64kbps', name: 'فارس عباد' },
   { id: 'Ghamadi_40kbps', name: 'سعد الغامدي' },
   { id: 'Hani_Rifai_192kbps', name: 'هاني الرفاعي' },
+  { id: 'Hudhaify_128kbps', name: 'علي بن عبد الرحمن الحذيفي' },
   { id: 'Husary_128kbps', name: 'محمود خليل الحصري (مرتل)' },
   { id: 'Husary_Mujawwad_128kbps', name: 'محمود خليل الحصري (مجود)' },
-  { id: 'Hudhaify_128kbps', name: 'علي بن عبد الرحمن الحذيفي' },
+  { id: 'Husary_Muallim_128kbps', name: 'محمود خليل الحصري (معلم)' },
   { id: 'Ibrahim_Akhdar_32kbps', name: 'إبراهيم الأخضر' },
+  { id: 'Karim_Mansoori_128kbps', name: 'كريم منصوري' },
+  { id: 'Khaalid_Abdullaah_al-Qahtaanee_192kbps', name: 'خالد القحطاني' },
   { id: 'MaherAlMuaiqly128kbps', name: 'ماهر المعيقلي' },
   { id: 'Menshawi_16kbps', name: 'محمد صديق المنشاوي (مرتل)' },
   { id: 'Minshawy_Mujawwad_192kbps', name: 'محمد صديق المنشاوي (مجود)' },
+  { id: 'Minshawy_Teacher_128kbps', name: 'محمد صديق المنشاوي (معلم)' },
   { id: 'Mohammad_al_Tablaway_128kbps', name: 'محمد محمود الطبلاوي' },
   { id: 'Muhammad_Ayyoub_128kbps', name: 'محمد أيوب' },
   { id: 'Muhammad_Jibreel_128kbps', name: 'محمد جبريل' },
+  { id: 'Muhsin_Al_Qasim_192kbps', name: 'عبد المحسن القاسم' },
+  { id: 'Mustafa_Ismail_48kbps', name: 'مصطفى إسماعيل' },
+  { id: 'Nasser_Alqatami_128kbps', name: 'ناصر القطامي' },
+  { id: 'Parhizgar_48kbps', name: 'شهريار پرهيزگار' },
+  { id: 'Sahl_Yassin_128kbps', name: 'سهل ياسين' },
+  { id: 'Salaah_AbdulRahman_Bukhatir_128kbps', name: 'صلاح بو خاطر' },
+  { id: 'Salah_Al_Budair_128kbps', name: 'صلاح البدير' },
   { id: 'Saood_ash-Shuraym_128kbps', name: 'سعود الشريم' },
   { id: 'Yaser_Salamah_128kbps', name: 'ياسر سلامة' },
   { id: 'Yasser_Ad-Dussary_128kbps', name: 'ياسر الدوسري' },
-  { id: 'Nasser_Alqatami_128kbps', name: 'ناصر القطامي' },
-  { id: 'Fares_Abbad_64kbps', name: 'فارس عباد' },
-  { id: 'Ali_Jaber_64kbps', name: 'علي جابر' },
-  { id: 'Khaalid_Abdullaah_al-Qahtaanee_192kbps', name: 'خالد القحطاني' }
+  { id: 'aziz_alili_128kbps', name: 'عزيز عليلي' },
+  { id: 'khalefa_al_tunaiji_64kbps', name: 'خليفة الطنيجي' },
+  { id: 'mahmoud_ali_al_banna_32kbps', name: 'محمود علي البنا' }
 ];
+
+const BACKGROUND_IMAGES = [
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 28, 29, 46, 49, 54, 57, 58, 61, 62, 68, 69, 74, 97, 103, 104, 114, 119, 122, 124, 128, 136, 137, 142, 143, 147, 152, 154, 163, 167, 173
+].map(id => `https://picsum.photos/id/${id}/1080/1920`);
+
+const PLAYER_IMAGES = [
+  175, 184, 188, 193, 197, 200, 201, 204, 206, 208, 209, 211, 212, 214, 215, 216, 218, 219, 222, 223, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 247
+].map(id => `https://picsum.photos/id/${id}/800/800`);
 
 export default function QuranReelGenerator() {
   const [surahs, setSurahs] = useState<Surah[]>([]);
@@ -91,6 +114,20 @@ export default function QuranReelGenerator() {
   const [backgroundType, setBackgroundType] = useState<'video' | 'black' | 'image'>('video');
   const [customImage, setCustomImage] = useState<string | null>(null);
 
+  const [designTemplate, setDesignTemplate] = useState<'default' | 'music-player'>('default');
+  const [playerImage, setPlayerImage] = useState<string>(PLAYER_IMAGES[0]);
+  const [playerImageCustom, setPlayerImageCustom] = useState<string | null>(null);
+  const [playerBgImage, setPlayerBgImage] = useState<string>(BACKGROUND_IMAGES[0]);
+  const [playerBgCustom, setPlayerBgCustom] = useState<string | null>(null);
+  const [playerBgBlur, setPlayerBgBlur] = useState<number>(10);
+  const [playerInfoColor, setPlayerInfoColor] = useState<string>('#ffffff');
+  const [playerColor, setPlayerColor] = useState<string>('rgba(100, 80, 70, 0.7)');
+  const [playerGradientColors, setPlayerGradientColors] = useState<{color: string, stop: number}[]>([
+    {color: '#645046', stop: 0}, 
+    {color: '#322823', stop: 100}
+  ]);
+  const [usePlayerGradient, setUsePlayerGradient] = useState(true);
+
   const [estimatedDuration, setEstimatedDuration] = useState(0);
   const [isCalculatingDuration, setIsCalculatingDuration] = useState(false);
   
@@ -103,7 +140,47 @@ export default function QuranReelGenerator() {
   const [tasbeehIndex, setTasbeehIndex] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
   const TASBEEH_WORDS = ['سُبْحَانَ اللَّهِ', 'الْحَمْدُ لِلَّهِ', 'لَا إِلَهَ إِلَّا اللَّهُ', 'اللَّهُ أَكْبَرُ', 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ'];
+
+  useEffect(() => {
+    // Stop preview when reciter changes
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      setIsPlayingPreview(false);
+    }
+  }, [selectedReciter]);
+
+  useEffect(() => {
+    return () => {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+      }
+    };
+  }, []);
+
+  const togglePreview = () => {
+    if (isPlayingPreview && audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      setIsPlayingPreview(false);
+    } else {
+      if (!audioPreviewRef.current) {
+        audioPreviewRef.current = new Audio();
+        audioPreviewRef.current.addEventListener('ended', () => setIsPlayingPreview(false));
+      }
+      // Al-hamdu lillahi rabbil 'alamin is 001002
+      const audioUrl = `/api/proxy?url=${encodeURIComponent(`https://everyayah.com/data/${selectedReciter}/001002.mp3`)}`;
+      audioPreviewRef.current.src = audioUrl;
+      audioPreviewRef.current.play().then(() => {
+        setIsPlayingPreview(true);
+      }).catch(err => {
+        console.error("Failed to play preview:", err);
+        setIsPlayingPreview(false);
+      });
+    }
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -133,6 +210,7 @@ export default function QuranReelGenerator() {
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [currentPreviewText, setCurrentPreviewText] = useState<string>('');
   const [currentPreviewAyahNumber, setCurrentPreviewAyahNumber] = useState<number>(0);
+  const [previewProgress, setPreviewProgress] = useState(0);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const isPreviewCancelled = useRef<boolean>(false);
 
@@ -292,22 +370,25 @@ export default function QuranReelGenerator() {
     isPreviewCancelled.current = true;
     if (activeAudioRef.current) {
       activeAudioRef.current.pause();
+      activeAudioRef.current.removeAttribute('src');
+      activeAudioRef.current.load();
       activeAudioRef.current = null;
     }
     setPreviewState('idle');
     setCurrentPreviewText('');
   };
 
-  const calculateTextChunks = (text: string, baseWidth: number, scale: number) => {
+  const calculateTextChunks = (text: string, baseWidth: number, scale: number, limitLines?: number, customFontSize?: number, customMaxWidth?: number) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
-    ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+    const actualFontSize = customFontSize !== undefined ? customFontSize : fontSize * scale;
+    ctx.font = `${fontWeight} ${actualFontSize}px ${fontFamily}`;
     ctx.letterSpacing = `${letterSpacing * scale}px`;
 
     const words = text.split(' ');
     let line = '';
     const lines: string[] = [];
-    const maxWidth = baseWidth * scale - (160 * scale);
+    const maxWidth = customMaxWidth !== undefined ? customMaxWidth : baseWidth * scale - (160 * scale);
 
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + ' ';
@@ -322,8 +403,9 @@ export default function QuranReelGenerator() {
     lines.push(line.trim());
 
     const chunks = [];
-    for (let j = 0; j < lines.length; j += maxLinesPerSlide) {
-      chunks.push(lines.slice(j, j + maxLinesPerSlide));
+    const effectiveMaxLines = limitLines || maxLinesPerSlide;
+    for (let j = 0; j < lines.length; j += effectiveMaxLines) {
+      chunks.push(lines.slice(j, j + effectiveMaxLines));
     }
     return chunks;
   };
@@ -357,12 +439,36 @@ export default function QuranReelGenerator() {
       setPreviewState('playing');
       
       const baseWidth = videoFormat === 'landscape' ? 1920 : 1080;
+      
+      let totalPreviewDuration = 0;
+      for (let i = 0; i < audioData.length; i++) {
+        const audio = new Audio(audioData[i].audioUrl);
+        await new Promise<void>((resolve) => {
+          audio.onloadedmetadata = () => {
+            totalPreviewDuration += audio.duration;
+            resolve();
+          };
+          audio.onerror = () => resolve();
+        });
+      }
+      
+      let currentPreviewTime = 0;
 
       for (let i = 0; i < audioData.length; i++) {
         if (isPreviewCancelled.current) break;
         
         const item = audioData[i];
-        const chunks = calculateTextChunks(item.text, baseWidth, 1);
+        
+        let chunks;
+        if (designTemplate === 'music-player') {
+          const videoCqi = baseWidth / 100;
+          const cardWidth = videoFormat === 'portrait' ? 80 * videoCqi : (videoFormat === 'square' ? 85 * videoCqi : 55 * videoCqi);
+          const actualFontSize = (fontSize / 1080) * 80 * videoCqi;
+          const actualMaxWidth = cardWidth * 0.9;
+          chunks = calculateTextChunks(item.text, 0, 1, 1, actualFontSize, actualMaxWidth);
+        } else {
+          chunks = calculateTextChunks(item.text, baseWidth * 0.8, 1, maxLinesPerSlide);
+        }
         
         const audio = new Audio(item.audioUrl);
         activeAudioRef.current = audio;
@@ -405,10 +511,27 @@ export default function QuranReelGenerator() {
               setCurrentPreviewText(currentChunk.text);
               setCurrentPreviewAyahNumber(item.numberInSurah);
             }
+            if (totalPreviewDuration > 0) {
+              setPreviewProgress(((currentPreviewTime + currentTime) / totalPreviewDuration) * 100);
+            }
           };
-          audio.onended = () => resolve();
+          audio.onended = () => {
+            currentPreviewTime += audio.duration;
+            resolve();
+          };
           audio.onerror = () => resolve();
-          audio.play().catch(() => resolve());
+          
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(error => {
+              if (error.name !== 'AbortError') {
+                console.error("Audio playback failed:", error);
+              }
+              resolve();
+            });
+          } else {
+            resolve();
+          }
         });
       }
       
@@ -425,13 +548,15 @@ export default function QuranReelGenerator() {
 
   const generateReel = async () => {
     setError(null);
-    if (backgroundType === 'video' && selectedVideos.length === 0) {
-      setError('الرجاء اختيار فيديو خلفية واحد على الأقل');
-      return;
-    }
-    if (backgroundType === 'image' && !customImage) {
-      setError('الرجاء رفع صورة للخلفية');
-      return;
+    if (designTemplate !== 'music-player') {
+      if (backgroundType === 'video' && selectedVideos.length === 0) {
+        setError('الرجاء اختيار فيديو خلفية واحد على الأقل');
+        return;
+      }
+      if (backgroundType === 'image' && !customImage) {
+        setError('الرجاء رفع صورة للخلفية');
+        return;
+      }
     }
     if (startAyah > endAyah) {
       setError('آية البداية يجب أن تكون أقل من أو تساوي آية النهاية');
@@ -544,9 +669,10 @@ export default function QuranReelGenerator() {
 
       // Preload audio and calculate text chunks
       try {
-        await document.fonts.load(`${fontWeight} ${fontSize * scale}px "${fontFamily.split(',')[0].replace(/"/g, '')}"`);
+        const fontName = fontFamily.split(',')[0].replace(/"/g, '').trim();
+        await document.fonts.load(`16px "${fontName}"`);
       } catch (e) {
-        console.warn('Failed to load font, falling back to default.');
+        console.warn('Failed to load font, falling back to default.', e);
       }
       ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
       ctx.letterSpacing = `${letterSpacing * scale}px`;
@@ -635,7 +761,37 @@ export default function QuranReelGenerator() {
       setGenerationStatus('جاري تحضير الخلفية...');
       setProgress(35);
       let loadedCustomImage: HTMLImageElement | null = null;
-      if (backgroundType === 'image' && customImage) {
+      let loadedPlayerBgImage: HTMLImageElement | null = null;
+      let loadedPlayerBgCustom: HTMLImageElement | null = null;
+      let loadedPlayerImage: HTMLImageElement | null = null;
+
+      if (designTemplate === 'music-player') {
+        if (playerBgCustom) {
+          loadedPlayerBgCustom = new Image();
+          loadedPlayerBgCustom.crossOrigin = 'anonymous';
+          loadedPlayerBgCustom.src = playerBgCustom;
+          await new Promise((resolve) => {
+            loadedPlayerBgCustom!.onload = resolve;
+            loadedPlayerBgCustom!.onerror = resolve;
+          });
+        }
+
+        loadedPlayerBgImage = new Image();
+        loadedPlayerBgImage.crossOrigin = 'anonymous';
+        loadedPlayerBgImage.src = playerBgImage;
+        await new Promise((resolve) => {
+          loadedPlayerBgImage!.onload = resolve;
+          loadedPlayerBgImage!.onerror = resolve;
+        });
+
+        loadedPlayerImage = new Image();
+        loadedPlayerImage.crossOrigin = 'anonymous';
+        loadedPlayerImage.src = playerImage;
+        await new Promise((resolve) => {
+          loadedPlayerImage!.onload = resolve;
+          loadedPlayerImage!.onerror = resolve;
+        });
+      } else if (backgroundType === 'image' && customImage) {
         loadedCustomImage = new Image();
         loadedCustomImage.crossOrigin = 'anonymous';
         loadedCustomImage.src = customImage;
@@ -683,6 +839,10 @@ export default function QuranReelGenerator() {
       const fps = 30; // 30fps is standard and widely supported by hardware encoders
       const fpsInterval = 1000 / fps;
       let lastDrawTime = performance.now();
+
+      // Draw an initial frame to ensure the canvas stream is initialized properly
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const stream = canvas.captureStream ? canvas.captureStream(fps) : (canvas as any).mozCaptureStream ? (canvas as any).mozCaptureStream(fps) : null;
       if (!stream) {
@@ -787,7 +947,7 @@ export default function QuranReelGenerator() {
       });
 
       try {
-        mediaRecorder.start(); // Record continuously without timeslice to prevent duration issues
+        mediaRecorder.start(1000); // Record with timeslice to ensure data is emitted periodically
       } catch (startError: any) {
         throw new Error(`فشل بدء التسجيل الفعلي. التفاصيل: ${startError.message}`);
       }
@@ -837,7 +997,6 @@ export default function QuranReelGenerator() {
             setGenerationStatus('جاري معالجة الملف النهائي...');
             setProgress(98);
             if (mediaRecorder.state !== 'inactive') {
-              try { mediaRecorder.requestData(); } catch (e) {}
               mediaRecorder.stop();
             }
             if (backgroundType === 'video') {
@@ -847,7 +1006,262 @@ export default function QuranReelGenerator() {
           return;
         }
 
-        if (backgroundType === 'black') {
+        if (designTemplate === 'music-player' && (loadedPlayerBgImage || loadedPlayerBgCustom) && loadedPlayerImage) {
+          const bgImg = loadedPlayerBgCustom || loadedPlayerBgImage;
+          // Draw background image
+          const imgRatio = bgImg.width / bgImg.height;
+          const canvasRatio = canvas.width / canvas.height;
+          let drawWidth, drawHeight, startX, startY;
+
+          if (imgRatio > canvasRatio) {
+            drawHeight = canvas.height;
+            drawWidth = canvas.height * imgRatio;
+            startX = (canvas.width - drawWidth) / 2;
+            startY = 0;
+          } else {
+            drawWidth = canvas.width;
+            drawHeight = canvas.width / imgRatio;
+            startX = 0;
+            startY = (canvas.height - drawHeight) / 2;
+          }
+
+          // Apply blur to background
+          ctx.filter = `blur(${playerBgBlur}px)`;
+          ctx.drawImage(bgImg, startX - 40, startY - 40, drawWidth + 80, drawHeight + 80);
+          ctx.filter = 'none';
+          
+          // Add dark overlay to background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Draw glassmorphism card
+          const videoCqi = canvas.width / 100;
+          let cardWidth, cardHeight;
+          if (videoFormat === 'portrait') {
+            cardWidth = 80 * videoCqi;
+            cardHeight = canvas.height * 0.70;
+          } else if (videoFormat === 'square') {
+            cardWidth = 85 * videoCqi;
+            cardHeight = canvas.height * 0.85;
+          } else {
+            cardWidth = 55 * videoCqi;
+            cardHeight = canvas.height * 0.80;
+          }
+          
+          const cardX = (canvas.width - cardWidth) / 2;
+          const cardY = (canvas.height - cardHeight) / 2;
+          const cardRadius = 5 * videoCqi;
+
+          // Draw card with gradient or solid color
+          if (usePlayerGradient && playerGradientColors.length >= 2) {
+            const gradient = ctx.createLinearGradient(cardX, cardY, cardX + cardWidth, cardY + cardHeight);
+            playerGradientColors.forEach((grad) => {
+              // Add transparency to gradient colors for glass effect
+              const r = parseInt(grad.color.slice(1, 3), 16);
+              const g = parseInt(grad.color.slice(3, 5), 16);
+              const b = parseInt(grad.color.slice(5, 7), 16);
+              gradient.addColorStop(grad.stop / 100, `rgba(${r}, ${g}, ${b}, 0.6)`);
+            });
+            ctx.fillStyle = gradient;
+          } else {
+            ctx.fillStyle = playerColor;
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(cardX + cardRadius, cardY);
+          ctx.lineTo(cardX + cardWidth - cardRadius, cardY);
+          ctx.quadraticCurveTo(cardX + cardWidth, cardY, cardX + cardWidth, cardY + cardRadius);
+          ctx.lineTo(cardX + cardWidth, cardY + cardHeight - cardRadius);
+          ctx.quadraticCurveTo(cardX + cardWidth, cardY + cardHeight, cardX + cardWidth - cardRadius, cardY + cardHeight);
+          ctx.lineTo(cardX + cardRadius, cardY + cardHeight);
+          ctx.quadraticCurveTo(cardX, cardY + cardHeight, cardX, cardY + cardHeight - cardRadius);
+          ctx.lineTo(cardX, cardY + cardRadius);
+          ctx.quadraticCurveTo(cardX, cardY, cardX + cardRadius, cardY);
+          ctx.closePath();
+          ctx.fill();
+
+          // Add subtle border for glass effect
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.lineWidth = 0.2 * videoCqi;
+          ctx.stroke();
+
+          // Draw player image inside card
+          const p = 6 * videoCqi; // padding
+          const playerImgSize = cardWidth * 0.75;
+          const playerImgX = cardX + (cardWidth - playerImgSize) / 2;
+          const playerImgY = cardY + p;
+          const playerImgRadius = playerImgSize / 2; // Make it a circle
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(playerImgX + playerImgRadius, playerImgY + playerImgRadius, playerImgRadius, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+
+          // Add rotation
+          const rotationAngle = (currentAudioTime / 10) * Math.PI * 2; // Full rotation every 10 seconds
+          ctx.translate(playerImgX + playerImgRadius, playerImgY + playerImgRadius);
+          ctx.rotate(rotationAngle);
+          ctx.drawImage(loadedPlayerImage, -playerImgRadius, -playerImgRadius, playerImgSize, playerImgSize);
+          ctx.restore();
+
+          // Draw Info
+          const infoY = playerImgY + playerImgSize + (4 * videoCqi);
+          const px = 2 * videoCqi;
+          const textStartX = cardX + p + px;
+
+          ctx.textAlign = 'left';
+          ctx.direction = 'ltr';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = playerInfoColor;
+          ctx.font = `bold ${4.5 * videoCqi}px Cairo, Arial`;
+          const surahName = surahs.find(s => s.number === selectedSurah)?.name || '';
+          ctx.fillText(`Surah ${surahName}`, textStartX, infoY);
+          
+          ctx.font = `500 ${3 * videoCqi}px Cairo, Arial`;
+          ctx.fillStyle = playerInfoColor;
+          ctx.globalAlpha = 0.8;
+          const reciterName = RECITERS.find(r => r.id === selectedReciter)?.name || '';
+          ctx.fillText(reciterName, textStartX, infoY + (5.5 * videoCqi));
+          ctx.globalAlpha = 1.0;
+
+          // Controls (Bottom up)
+          const controlsY = cardY + cardHeight - (2 * videoCqi) - (6 * videoCqi); // pb-[2cqi] + half of 12cqi play button
+          const progressBarY = controlsY - (6 * videoCqi) - (4 * videoCqi); // half of play button + mb-[4cqi]
+
+          // Draw Ayah Text (Centered in the remaining space)
+          const textSpaceTop = infoY + (10 * videoCqi); // infoY + info height + mb-[4cqi]
+          const textSpaceBottom = progressBarY - (4 * videoCqi); // progressBarY - mb-[4cqi]
+          const textCenterY = textSpaceTop + (textSpaceBottom - textSpaceTop) / 2;
+
+          const currentAyahIndex = processedAyahs.findIndex(a => currentAudioTime >= a.startTime && currentAudioTime < a.endTime);
+          const currentAyah = currentAyahIndex !== -1 ? processedAyahs[currentAyahIndex] : processedAyahs[processedAyahs.length - 1];
+
+          if (currentAyah) {
+            const timeWithinAyah = currentAudioTime - currentAyah.startTime;
+            // Recalculate chunks with 1 line limit for music player
+            const actualFontSize = (fontSize / 1080) * 80 * videoCqi;
+            const actualMaxWidth = cardWidth * 0.9;
+            const musicChunks = calculateTextChunks(currentAyah.text, 0, 1, 1, actualFontSize, actualMaxWidth);
+            
+            // Recalculate chunk times for the new chunks
+            const totalChars = currentAyah.text.replace(/\s+/g, '').length;
+            const ayahDuration = currentAyah.endTime - currentAyah.startTime;
+            const endPaddingTime = Math.min(Math.max(ayahDuration * 0.15, 1.5), 4.0);
+            const activeDuration = Math.max(ayahDuration - endPaddingTime, ayahDuration * 0.5);
+
+            let currentChunkStart = 0;
+            let currentChunkIdx = 0;
+            for (let c = 0; c < musicChunks.length; c++) {
+              const chunkChars = musicChunks[c].join('').replace(/\s+/g, '').length;
+              const isLastChunk = (c === musicChunks.length - 1);
+              let chunkDuration = totalChars > 0 ? (chunkChars / totalChars) * activeDuration : activeDuration;
+              if (isLastChunk) chunkDuration += (ayahDuration - activeDuration);
+              
+              if (timeWithinAyah >= currentChunkStart && timeWithinAyah < currentChunkStart + chunkDuration) {
+                currentChunkIdx = c;
+                break;
+              }
+              currentChunkStart += chunkDuration;
+            }
+
+            const lines = musicChunks[currentChunkIdx] || [];
+            ctx.fillStyle = fontColor;
+            ctx.font = `${fontWeight} ${actualFontSize}px ${fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.direction = 'rtl';
+            
+            const lineHeight = actualFontSize * 1.5;
+            const totalTextHeight = lines.length * lineHeight;
+            const textY = textCenterY - (totalTextHeight / 2) + (lineHeight / 2);
+            
+            for (let i = 0; i < lines.length; i++) {
+              ctx.fillText(lines[i], canvas.width / 2, textY + (i * lineHeight));
+            }
+          }
+
+          // Progress Bar
+          const progressBarWidth = cardWidth * 0.85;
+          const progressBarX = cardX + (cardWidth - progressBarWidth) / 2;
+          const progressPercent = Math.min(currentAudioTime / totalDuration, 1);
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.beginPath();
+          ctx.roundRect(progressBarX, progressBarY, progressBarWidth, 0.6 * videoCqi, 0.3 * videoCqi);
+          ctx.fill();
+
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.roundRect(progressBarX, progressBarY, progressBarWidth * progressPercent, 0.6 * videoCqi, 0.3 * videoCqi);
+          ctx.fill();
+
+          // Time labels
+          ctx.font = `${2.5 * videoCqi}px Courier New, monospace`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.direction = 'ltr';
+          const formatTime = (s: number) => {
+            const min = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${min}:${sec.toString().padStart(2, '0')}`;
+          };
+          ctx.fillText(formatTime(currentAudioTime), progressBarX, progressBarY + (1.5 * videoCqi));
+          ctx.textAlign = 'right';
+          ctx.fillText(`-${formatTime(Math.max(0, totalDuration - currentAudioTime))}`, progressBarX + progressBarWidth, progressBarY + (1.5 * videoCqi));
+
+          // Controls
+          const centerX = canvas.width / 2;
+
+          const drawSvgIcon = (paths: string[], x: number, y: number, size: number, color: string, fill = false) => {
+            ctx.save();
+            ctx.translate(x - size / 2, y - size / 2);
+            const scale = size / 24;
+            ctx.scale(scale, scale);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            paths.forEach(pathStr => {
+              const p = new Path2D(pathStr);
+              if (fill) ctx.fill(p);
+              ctx.stroke(p);
+            });
+            ctx.restore();
+          };
+
+          // Play/Pause circle
+          const playRadius = 6 * videoCqi;
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(centerX, controlsY, playRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Pause icon (two vertical bars, rounded)
+          const pauseColor = playerGradientColors[0]?.color || '#000000';
+          ctx.fillStyle = pauseColor;
+          ctx.beginPath();
+          ctx.roundRect(centerX - (1.2 * videoCqi), controlsY - (2 * videoCqi), 1.2 * videoCqi, 4 * videoCqi, 0.6 * videoCqi);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.roundRect(centerX + (0.2 * videoCqi), controlsY - (2 * videoCqi), 1.2 * videoCqi, 4 * videoCqi, 0.6 * videoCqi);
+          ctx.fill();
+
+          // Skip backward (left)
+          drawSvgIcon(['M19 20L9 12l10-8v16z', 'M5 19V5'], centerX - (10 * videoCqi), controlsY, 5 * videoCqi, 'rgba(255, 255, 255, 0.8)', false);
+
+          // Skip forward (right)
+          drawSvgIcon(['M5 4l10 8-10 8V4z', 'M19 5v14'], centerX + (10 * videoCqi), controlsY, 5 * videoCqi, 'rgba(255, 255, 255, 0.8)', false);
+
+          // Heart icon (left)
+          drawSvgIcon(['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'], progressBarX + (2.5 * videoCqi), controlsY, 5 * videoCqi, 'rgba(255, 255, 255, 0.8)', false);
+
+          // Repeat icon (right)
+          drawSvgIcon(['m17 2 4 4-4 4', 'M3 11v-1a4 4 0 0 1 4-4h14', 'm7 22-4-4 4-4', 'M21 13v1a4 4 0 0 1-4 4H3'], progressBarX + progressBarWidth - (2.5 * videoCqi), controlsY, 5 * videoCqi, 'rgba(255, 255, 255, 0.8)', false);
+
+        } else if (backgroundType === 'black') {
           ctx.fillStyle = 'black';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         } else if (backgroundType === 'image' && loadedCustomImage) {
@@ -952,57 +1366,59 @@ export default function QuranReelGenerator() {
         }
 
         // Find current ayah
-        const currentAyahIndex = processedAyahs.findIndex(a => currentAudioTime >= a.startTime && currentAudioTime < a.endTime);
-        const currentAyah = currentAyahIndex !== -1 ? processedAyahs[currentAyahIndex] : processedAyahs[processedAyahs.length - 1];
+        if (designTemplate !== 'music-player') {
+          const currentAyahIndex = processedAyahs.findIndex(a => currentAudioTime >= a.startTime && currentAudioTime < a.endTime);
+          const currentAyah = currentAyahIndex !== -1 ? processedAyahs[currentAyahIndex] : processedAyahs[processedAyahs.length - 1];
 
-        // Draw text
-        if (currentAyah) {
-          ctx.fillStyle = fontColor;
-          ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
-          ctx.letterSpacing = `${letterSpacing * scale}px`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.direction = 'rtl';
+          // Draw text
+          if (currentAyah) {
+            ctx.fillStyle = fontColor;
+            ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+            ctx.letterSpacing = `${letterSpacing * scale}px`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.direction = 'rtl';
 
-          const timeWithinAyah = currentAudioTime - currentAyah.startTime;
-          let chunkIdx = currentAyah.chunkTimes.findIndex((t: any) => timeWithinAyah >= t.start && timeWithinAyah < t.end);
-          if (chunkIdx === -1) chunkIdx = currentAyah.chunks.length - 1;
-          if (isNaN(chunkIdx) || chunkIdx < 0) chunkIdx = 0;
-          
-          const lines = currentAyah.chunks[chunkIdx] || [];
+            const timeWithinAyah = currentAudioTime - currentAyah.startTime;
+            let chunkIdx = currentAyah.chunkTimes.findIndex((t: any) => timeWithinAyah >= t.start && timeWithinAyah < t.end);
+            if (chunkIdx === -1) chunkIdx = currentAyah.chunks.length - 1;
+            if (isNaN(chunkIdx) || chunkIdx < 0) chunkIdx = 0;
+            
+            const lines = currentAyah.chunks[chunkIdx] || [];
 
-          const lineHeight = (fontSize * lineHeightMultiplier) * scale;
-          const totalHeight = lines.length * lineHeight;
-          let startYText = (canvas.height - totalHeight) / 2;
+            const lineHeight = (fontSize * lineHeightMultiplier) * scale;
+            const totalHeight = lines.length * lineHeight;
+            let startYText = (canvas.height - totalHeight) / 2;
 
-          // Draw text shadow (using offset fill for better performance than shadowBlur)
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-          for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], canvas.width / 2 + (4 * scale), startYText + (i * lineHeight) + (4 * scale));
-          }
+            // Draw text shadow (using offset fill for better performance than shadowBlur)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            for (let i = 0; i < lines.length; i++) {
+              ctx.fillText(lines[i], canvas.width / 2 + (4 * scale), startYText + (i * lineHeight) + (4 * scale));
+            }
 
-          // Draw main text
-          ctx.fillStyle = fontColor;
-          for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], canvas.width / 2, startYText + (i * lineHeight));
-          }
-          
-          // Draw Info at the bottom
-          const bottomTexts = [];
-          if (showSurahName) {
-            const surahName = surahs.find(s => s.number === selectedSurah)?.name || '';
-            bottomTexts.push(surahName);
-          }
-          if (showAyahNumber) bottomTexts.push(`آية ${currentAyah.numberInSurah}`);
-          if (showReciterName) {
-            const reciterName = RECITERS.find(r => r.id === selectedReciter)?.name || '';
-            bottomTexts.push(reciterName);
-          }
+            // Draw main text
+            ctx.fillStyle = fontColor;
+            for (let i = 0; i < lines.length; i++) {
+              ctx.fillText(lines[i], canvas.width / 2, startYText + (i * lineHeight));
+            }
+            
+            // Draw Info at the bottom
+            const bottomTexts = [];
+            if (showSurahName) {
+              const surahName = surahs.find(s => s.number === selectedSurah)?.name || '';
+              bottomTexts.push(surahName);
+            }
+            if (showAyahNumber) bottomTexts.push(`آية ${currentAyah.numberInSurah}`);
+            if (showReciterName) {
+              const reciterName = RECITERS.find(r => r.id === selectedReciter)?.name || '';
+              bottomTexts.push(reciterName);
+            }
 
-          if (bottomTexts.length > 0) {
-            ctx.font = `${40 * scale}px Cairo, Arial`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.fillText(bottomTexts.join(' | '), canvas.width / 2, canvas.height - (150 * scale));
+            if (bottomTexts.length > 0) {
+              ctx.font = `${40 * scale}px Cairo, Arial`;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+              ctx.fillText(bottomTexts.join(' | '), canvas.width / 2, canvas.height - (150 * scale));
+            }
           }
         }
 
@@ -1053,8 +1469,8 @@ export default function QuranReelGenerator() {
       <header className="bg-white border-b border-neutral-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
-              <Play className="w-6 h-6 fill-current" />
+            <div className="w-12 h-12 shrink-0 rounded-xl overflow-hidden shadow-sm bg-white flex items-center justify-center">
+              <img src="https://image2url.com/r2/default/images/1772655483111-4e01c7d0-a57d-45ba-ad4a-6ad296d46b28.png" alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div className="flex flex-col">
               <h1 className="text-xl font-bold text-neutral-900 leading-tight">صانع فيديوهات القرآن</h1>
@@ -1083,15 +1499,24 @@ export default function QuranReelGenerator() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">القارئ</label>
-                  <select 
-                    value={selectedReciter}
-                    onChange={(e) => setSelectedReciter(e.target.value)}
-                    className="w-full rounded-xl border-neutral-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 bg-neutral-50 px-4 py-2.5 border"
-                  >
-                    {RECITERS.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2 items-center">
+                    <select 
+                      value={selectedReciter}
+                      onChange={(e) => setSelectedReciter(e.target.value)}
+                      className="flex-1 rounded-xl border-neutral-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 bg-neutral-50 px-4 py-2.5 border"
+                    >
+                      {RECITERS.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={togglePreview}
+                      className="h-[46px] w-[46px] shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-200 transition-colors border border-emerald-200"
+                      title={isPlayingPreview ? "إيقاف الاستماع" : "استمع لصوت القارئ (الحمد لله رب العالمين)"}
+                    >
+                      {isPlayingPreview ? <Square className="w-5 h-5 fill-current" /> : <Volume2 className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1418,7 +1843,251 @@ export default function QuranReelGenerator() {
             </div>
             </div>
 
+            {/* Design Template Settings */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-neutral-200">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-600" />
+                تصميم الفيديو
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button 
+                  onClick={() => setDesignTemplate('default')} 
+                  className={cn("py-3 px-4 rounded-xl border text-sm font-bold transition-colors", designTemplate === 'default' ? "bg-emerald-50 border-emerald-500 text-emerald-700" : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50")}
+                >
+                  النمط الكلاسيكي
+                </button>
+                <button 
+                  onClick={() => setDesignTemplate('music-player')} 
+                  className={cn("py-3 px-4 rounded-xl border text-sm font-bold transition-colors", designTemplate === 'music-player' ? "bg-emerald-50 border-emerald-500 text-emerald-700" : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50")}
+                >
+                  نمط مشغل الصوت
+                </button>
+              </div>
+
+              {designTemplate === 'music-player' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">صورة المشغل (الألبوم)</label>
+                    <div className="grid grid-cols-5 gap-2 h-40 overflow-y-auto p-2 border rounded-xl bg-neutral-50 mb-3">
+                      {PLAYER_IMAGES.map((img, idx) => (
+                        <button
+                          key={`player-${idx}`}
+                          onClick={() => {
+                            setPlayerImage(img);
+                            setPlayerImageCustom(null);
+                          }}
+                          className={cn(
+                            "relative aspect-square rounded-lg overflow-hidden border-2 transition-all",
+                            (playerImage === img && !playerImageCustom) ? "border-emerald-500 scale-95 shadow-md" : "border-transparent hover:border-emerald-300"
+                          )}
+                        >
+                          <img src={img} alt={`Player ${idx}`} className="w-full h-full object-cover" />
+                          {(playerImage === img && !playerImageCustom) && (
+                            <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+                              <CheckCircle2 className="w-6 h-6 text-white drop-shadow-md" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    <label className="flex items-center justify-center w-full py-3 px-4 border-2 border-neutral-300 border-dashed rounded-xl cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors gap-2">
+                      <Upload className="w-5 h-5 text-neutral-500" />
+                      <span className="text-sm text-neutral-600 font-medium">أو ارفع صورة ألبوم خاصة</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPlayerImageCustom(URL.createObjectURL(file));
+                        }
+                      }} />
+                    </label>
+                    
+                    {playerImageCustom && (
+                      <div className="mt-3 relative aspect-square w-32 rounded-xl overflow-hidden border border-emerald-500 shadow-sm mx-auto">
+                        <img src={playerImageCustom} className="w-full h-full object-cover" alt="Custom player image" />
+                        <div className="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-1 rounded-md text-[10px] font-bold">مفعلة</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">صورة الخلفية</label>
+                    <div className="grid grid-cols-5 gap-2 h-40 overflow-y-auto p-2 border rounded-xl bg-neutral-50 mb-3">
+                      {BACKGROUND_IMAGES.map((img, idx) => (
+                        <button
+                          key={`bg-${idx}`}
+                          onClick={() => {
+                            setPlayerBgImage(img);
+                            setPlayerBgCustom(null);
+                          }}
+                          className={cn(
+                            "relative aspect-square rounded-lg overflow-hidden border-2 transition-all",
+                            (playerBgImage === img && !playerBgCustom) ? "border-emerald-500 scale-95 shadow-md" : "border-transparent hover:border-emerald-300"
+                          )}
+                        >
+                          <img src={img} alt={`Background ${idx}`} className="w-full h-full object-cover" />
+                          {(playerBgImage === img && !playerBgCustom) && (
+                            <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+                              <CheckCircle2 className="w-6 h-6 text-white drop-shadow-md" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <label className="flex items-center justify-center w-full py-3 px-4 border-2 border-neutral-300 border-dashed rounded-xl cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors gap-2">
+                      <Upload className="w-5 h-5 text-neutral-500" />
+                      <span className="text-sm text-neutral-600 font-medium">أو ارفع صورة خلفية خاصة</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPlayerBgCustom(URL.createObjectURL(file));
+                        }
+                      }} />
+                    </label>
+                    
+                    {playerBgCustom && (
+                      <div className="mt-3 relative aspect-video rounded-xl overflow-hidden border border-emerald-500 shadow-sm">
+                        <img src={playerBgCustom} className="w-full h-full object-cover" alt="Custom background" />
+                        <div className="absolute top-2 right-2 bg-emerald-500 text-white px-2 py-1 rounded-md text-[10px] font-bold">مفعلة</div>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">قوة ضبابية الخلفية (Blur): {playerBgBlur}px</label>
+                      <input 
+                        type="range" 
+                        min="0" max="50" step="1"
+                        value={playerBgBlur} 
+                        onChange={(e) => setPlayerBgBlur(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">لون نصوص المشغل (السورة والقارئ)</label>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="color" 
+                          value={playerInfoColor} 
+                          onChange={(e) => setPlayerInfoColor(e.target.value)}
+                          className="w-12 h-12 rounded-xl cursor-pointer border-2 border-white shadow-sm"
+                        />
+                        <span className="text-sm font-mono text-neutral-500" dir="ltr">{playerInfoColor}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t pt-4">
+                      <label className="block text-sm font-medium text-neutral-700">لون البطاقة الزجاجية</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-neutral-500">تدرج ألوان</span>
+                        <button 
+                          onClick={() => setUsePlayerGradient(!usePlayerGradient)}
+                          className={cn(
+                            "w-10 h-5 rounded-full relative transition-colors",
+                            usePlayerGradient ? "bg-emerald-500" : "bg-neutral-300"
+                          )}
+                        >
+                          <div className={cn(
+                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                            usePlayerGradient ? "right-1" : "right-6"
+                          )} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {usePlayerGradient ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-col gap-4">
+                          {playerGradientColors.map((grad, idx) => (
+                            <div key={`grad-${idx}`} className="flex items-center gap-3 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+                              <input 
+                                type="color" 
+                                value={grad.color} 
+                                onChange={(e) => {
+                                  const newColors = [...playerGradientColors];
+                                  newColors[idx].color = e.target.value;
+                                  setPlayerGradientColors(newColors);
+                                }}
+                                className="w-10 h-10 rounded-lg cursor-pointer border-2 border-white shadow-sm shrink-0"
+                              />
+                              <div className="flex-1">
+                                <div className="flex justify-between mb-1">
+                                  <span className="text-xs font-medium text-neutral-600">نسبة اللون</span>
+                                  <span className="text-xs font-mono text-neutral-500">{grad.stop}%</span>
+                                </div>
+                                <input 
+                                  type="range" 
+                                  min="0" max="100" step="1"
+                                  value={grad.stop} 
+                                  onChange={(e) => {
+                                    const newColors = [...playerGradientColors];
+                                    newColors[idx].stop = Number(e.target.value);
+                                    setPlayerGradientColors(newColors);
+                                  }}
+                                  className="w-full accent-emerald-600"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                          <button 
+                            onClick={() => {
+                              if (playerGradientColors.length < 3) {
+                                setPlayerGradientColors([...playerGradientColors, {color: '#000000', stop: 100}]);
+                              } else {
+                                setPlayerGradientColors(playerGradientColors.slice(0, 2));
+                              }
+                            }}
+                            className="w-full py-2 rounded-xl border-2 border-dashed border-neutral-300 flex items-center justify-center text-neutral-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors text-sm font-medium"
+                          >
+                            {playerGradientColors.length < 3 ? 'إضافة لون جديد +' : 'إزالة اللون الأخير -'}
+                          </button>
+                        </div>
+                        <div 
+                          className="w-full h-8 rounded-lg shadow-inner border border-white/20 mt-4"
+                          style={{ background: `linear-gradient(to right, ${playerGradientColors.map(g => `${g.color} ${g.stop}%`).join(', ')})` }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="color" 
+                          value={(() => {
+                            if (playerColor.startsWith('rgba')) {
+                              const match = playerColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
+                              if (match) {
+                                const r = parseInt(match[1]).toString(16).padStart(2, '0');
+                                const g = parseInt(match[2]).toString(16).padStart(2, '0');
+                                const b = parseInt(match[3]).toString(16).padStart(2, '0');
+                                return `#${r}${g}${b}`;
+                              }
+                            }
+                            return '#645046';
+                          })()}
+                          onChange={(e) => {
+                            const hex = e.target.value;
+                            const r = parseInt(hex.slice(1, 3), 16);
+                            const g = parseInt(hex.slice(3, 5), 16);
+                            const b = parseInt(hex.slice(5, 7), 16);
+                            setPlayerColor(`rgba(${r}, ${g}, ${b}, 0.7)`);
+                          }}
+                          className="w-12 h-12 rounded-xl cursor-pointer border-2 border-white shadow-sm"
+                        />
+                        <div className="flex-1 h-12 rounded-xl border flex items-center px-4" style={{ backgroundColor: playerColor }}>
+                          <span className="text-white font-medium drop-shadow-md">معاينة اللون</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Background Settings */}
+            {designTemplate !== 'music-player' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-neutral-200">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-emerald-600" />
@@ -1519,7 +2188,7 @@ export default function QuranReelGenerator() {
                 </div>
               )}
             </div>
-
+            )}
           </div>
 
           {/* Preview Column */}
@@ -1554,49 +2223,153 @@ export default function QuranReelGenerator() {
                 style={{ aspectRatio: videoFormat === 'portrait' ? '9/16' : videoFormat === 'landscape' ? '16/9' : '1/1' }}
               >
                 {/* Background Layer */}
-                {backgroundType === 'video' && selectedVideos.length > 0 && (
-                  <video 
-                    src={`/api/proxy?url=${encodeURIComponent(selectedVideos[0])}`} 
-                    autoPlay 
-                    loop 
-                    muted 
-                    playsInline 
-                    className="absolute inset-0 w-full h-full object-cover" 
-                  />
-                )}
-                {backgroundType === 'image' && customImage && (
-                  <img src={customImage} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+                {designTemplate === 'music-player' ? (
+                  <>
+                    <img 
+                      src={playerBgCustom || playerBgImage} 
+                      className="absolute inset-0 w-full h-full object-cover scale-110" 
+                      style={{ filter: `blur(${playerBgBlur}px)` }}
+                      alt="Background" 
+                    />
+                    <div className="absolute inset-0 bg-black/40" />
+                  </>
+                ) : (
+                  <>
+                    {backgroundType === 'video' && selectedVideos.length > 0 && (
+                      <video 
+                        src={`/api/proxy?url=${encodeURIComponent(selectedVideos[0])}`} 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline 
+                        className="absolute inset-0 w-full h-full object-cover" 
+                      />
+                    )}
+                    {backgroundType === 'image' && customImage && (
+                      <img src={customImage} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+                    )}
+                    <div className="absolute inset-0 bg-black/50" />
+                  </>
                 )}
                 
-                {/* Overlay Layer */}
-                <div className="absolute inset-0 bg-black/50" />
+                {/* Content Layer */}
+                {designTemplate === 'music-player' ? (
+                  <div className="absolute inset-0 flex items-center justify-center p-[4cqi] z-10">
+                    <div 
+                      className="w-[80cqi] h-[70%] rounded-[5cqi] flex flex-col items-center p-[6cqi] relative overflow-hidden backdrop-blur-2xl border border-white/20 shadow-2xl"
+                      style={{ 
+                        background: usePlayerGradient && playerGradientColors.length >= 2
+                          ? `linear-gradient(135deg, ${playerGradientColors.map(c => `${c.color}99 ${c.stop}%`).join(', ')})`
+                          : playerColor 
+                      }}
+                    >
+                      {/* Player Image */}
+                      <div className="w-[75%] aspect-square rounded-full overflow-hidden mb-[4cqi] shadow-2xl border border-white/10 shrink-0 relative flex items-center justify-center">
+                        <img 
+                          src={playerImageCustom || playerImage} 
+                          className="w-full h-full object-cover absolute inset-0" 
+                          alt="Player" 
+                          style={{ 
+                            animation: previewState === 'playing' ? 'spin 10s linear infinite' : 'none' 
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Info */}
+                      <div className="w-full text-left mb-[4cqi] px-[2cqi] shrink-0">
+                        <h4 className="font-bold tracking-tight line-clamp-1" style={{ color: playerInfoColor, fontSize: '4.5cqi', marginBottom: '0.5cqi' }}>Surah {surahs.find(s => s.number === selectedSurah)?.name}</h4>
+                        <p className="font-medium line-clamp-1" style={{ color: playerInfoColor, opacity: 0.8, fontSize: '3cqi' }}>{RECITERS.find(r => r.id === selectedReciter)?.name}</p>
+                      </div>
+                      
+                      {/* Ayah Text */}
+                      <div className="flex-1 flex items-center justify-center w-full mb-[4cqi] px-[2cqi] overflow-hidden">
+                        <p 
+                          className="text-center leading-relaxed transition-all duration-500"
+                          style={{ 
+                            fontFamily: fontFamily,
+                            fontWeight: fontWeight,
+                            color: fontColor,
+                            fontSize: `${(fontSize / 1080) * 80}cqi`, 
+                            textShadow: '0 0.4cqi 1.2cqi rgba(0,0,0,0.3)' 
+                          }}
+                        >
+                          {currentPreviewText || (previewAyahs.length > 0 ? (() => {
+                            const baseWidth = videoFormat === 'landscape' ? 1920 : 1080;
+                            const videoCqi = baseWidth / 100;
+                            const cardWidth = videoFormat === 'portrait' ? 80 * videoCqi : (videoFormat === 'square' ? 85 * videoCqi : 55 * videoCqi);
+                            const actualFontSize = (fontSize / 1080) * 80 * videoCqi;
+                            const actualMaxWidth = cardWidth * 0.9;
+                            return calculateTextChunks(previewAyahs[0].text, 0, 1, 1, actualFontSize, actualMaxWidth)[0]?.join('\n');
+                          })() : 'جاري تحميل الآيات...')}
+                        </p>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-[85%] mb-[4cqi] shrink-0">
+                        <div className="w-full h-[0.6cqi] bg-white/20 rounded-full relative overflow-hidden">
+                          <motion.div 
+                            className="absolute left-0 top-0 h-full bg-white rounded-full"
+                            animate={{ width: `${previewProgress}%` }}
+                            transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-white/60 mt-[1.5cqi] font-mono tracking-tighter" style={{ fontSize: '2.5cqi' }}>
+                          <span>0:00</span>
+                          <span>-0:00</span>
+                        </div>
+                      </div>
+                      
+                      {/* Controls */}
+                      <div className="w-[85%] flex items-center justify-between mt-auto shrink-0 pb-[2cqi]">
+                        <button className="text-white/80 hover:text-white transition-colors"><Heart style={{ width: '5cqi', height: '5cqi' }} /></button>
+                        <div className="flex items-center gap-[6cqi]">
+                          <button className="text-white/80 hover:text-white transition-colors"><SkipBack style={{ width: '5cqi', height: '5cqi' }} /></button>
+                          <div className="bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform cursor-pointer shrink-0" style={{ width: '12cqi', height: '12cqi' }}>
+                            {previewState === 'playing' ? (
+                              <div className="flex gap-[1cqi]">
+                                <div className="bg-neutral-900 rounded-full" style={{ width: '1.2cqi', height: '4cqi' }}></div>
+                                <div className="bg-neutral-900 rounded-full" style={{ width: '1.2cqi', height: '4cqi' }}></div>
+                              </div>
+                            ) : (
+                              <Play className="text-neutral-900" style={{ width: '5cqi', height: '5cqi', marginLeft: '0.5cqi' }} />
+                            )}
+                          </div>
+                          <button className="text-white/80 hover:text-white transition-colors"><SkipForward style={{ width: '5cqi', height: '5cqi' }} /></button>
+                        </div>
+                        <button className="text-white/80 hover:text-white transition-colors"><Repeat style={{ width: '5cqi', height: '5cqi' }} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Text Layer */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center z-10">
+                      <p 
+                        className="leading-loose whitespace-pre-wrap" 
+                        style={{ 
+                          fontFamily: fontFamily,
+                          fontWeight: fontWeight,
+                          color: fontColor,
+                          fontSize: `${(fontSize / 1080) * 100}cqi`, 
+                          lineHeight: lineHeightMultiplier,
+                          letterSpacing: `${letterSpacing}px`,
+                          textShadow: '0 2px 10px rgba(0,0,0,0.8)' 
+                        }}
+                      >
+                        {currentPreviewText || (previewAyahs.length > 0 ? calculateTextChunks(previewAyahs[0].text, videoFormat === 'landscape' ? 1920 : 1080, 1)[0]?.join('\n') : 'جاري تحميل الآيات...')}
+                      </p>
+                    </div>
 
-                {/* Text Layer */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-6 text-center z-10">
-                  <p 
-                    className="leading-loose whitespace-pre-wrap" 
-                    style={{ 
-                      fontFamily: fontFamily,
-                      fontWeight: fontWeight,
-                      color: fontColor,
-                      fontSize: `${(fontSize / 1080) * 100}cqi`, 
-                      lineHeight: lineHeightMultiplier,
-                      letterSpacing: `${letterSpacing}px`,
-                      textShadow: '0 2px 10px rgba(0,0,0,0.8)' 
-                    }}
-                  >
-                    {currentPreviewText || (previewAyahs.length > 0 ? calculateTextChunks(previewAyahs[0].text, videoFormat === 'landscape' ? 1920 : 1080, 1)[0]?.join('\n') : 'جاري تحميل الآيات...')}
-                  </p>
-                </div>
-
-                {/* Info Layer */}
-                <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-2 text-white/90 text-[10px] sm:text-xs font-medium z-10 drop-shadow-md">
-                  {showSurahName && <span>{surahs.find(s => s.number === selectedSurah)?.name}</span>}
-                  {showSurahName && (showAyahNumber || showReciterName) && <span>|</span>}
-                  {showAyahNumber && <span>آية {currentPreviewAyahNumber || startAyah}</span>}
-                  {showAyahNumber && showReciterName && <span>|</span>}
-                  {showReciterName && <span>{RECITERS.find(r => r.id === selectedReciter)?.name}</span>}
-                </div>
+                    {/* Info Layer */}
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-2 text-white/90 text-[10px] sm:text-xs font-medium z-10 drop-shadow-md">
+                      {showSurahName && <span>{surahs.find(s => s.number === selectedSurah)?.name}</span>}
+                      {showSurahName && (showAyahNumber || showReciterName) && <span>|</span>}
+                      {showAyahNumber && <span>آية {currentPreviewAyahNumber || startAyah}</span>}
+                      {showAyahNumber && showReciterName && <span>|</span>}
+                      {showReciterName && <span>{RECITERS.find(r => r.id === selectedReciter)?.name}</span>}
+                    </div>
+                  </>
+                )}
                 
                 {/* Container Query Wrapper for Font Scaling */}
                 <style>{`
@@ -1616,17 +2389,15 @@ export default function QuranReelGenerator() {
                 )}
                 <button
                   onClick={generateReel}
-                  disabled={isGenerating || (backgroundType === 'video' && selectedVideos.length === 0) || (backgroundType === 'image' && !customImage)}
+                  disabled={isGenerating || (designTemplate !== 'music-player' && ((backgroundType === 'video' && selectedVideos.length === 0) || (backgroundType === 'image' && !customImage)))}
                   className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
                 >
                   <Download className="w-6 h-6" />
                   تصدير الفيديو النهائي
                 </button>
               </div>
-
             </div>
           </div>
-          
         </div>
       </main>
       {/* Export Dialog Overlay */}
