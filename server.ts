@@ -62,6 +62,8 @@ async function startServer() {
         headers
       });
       
+      console.log(`Proxying ${url} - Status: ${response.status} ${response.statusText} - Content-Type: ${response.headers.get('content-type')}`);
+
       if (!response.ok && response.status !== 206) {
         return res.status(response.status).send(`Proxy error: ${response.statusText}`);
       }
@@ -70,7 +72,9 @@ async function startServer() {
 
       // Forward headers
       response.headers.forEach((value, key) => {
-        res.setHeader(key, value);
+        if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'content-length') {
+          res.setHeader(key, value);
+        }
       });
       
       // Add CORS headers
